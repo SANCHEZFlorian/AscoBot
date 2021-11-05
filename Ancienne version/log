@@ -1,0 +1,41 @@
+[16/09/2021, 10:31:46] - [INFO] - The bot is online!
+[16/09/2021, 10:33:48] - [INFO] - The bot is online!
+[16/09/2021, 10:33:53] - [INFO] - Un nouveau membre est là
+[16/09/2021, 10:33:53] - [WARN] - Attention !!
+[16/09/2021, 10:33:53] - [ERROR] - Une erreur est survenue :(
+[16/09/2021, 10:34:41] - [INFO] - Un nouveau membre est là
+[16/09/2021, 10:34:41] - [WARN] - Attention !!
+[16/09/2021, 10:34:41] - [ERROR] - Une erreur est survenue :(
+[16/09/2021, 10:56:00] - [INFO] - The bot is online!
+[16/09/2021, 11:35:43] - [INFO] - The bot is online!
+[16/09/2021, 14:22:51] - [INFO] - The bot is online!
+[16/09/2021, 14:28:30] - [INFO] - The bot is online!
+[16/09/2021, 14:28:53] - [INFO] - The bot is online!
+[16/09/2021, 14:35:27] - [INFO] - The bot is online!
+[16/09/2021, 14:37:43] - [INFO] - The bot is online!
+[16/09/2021, 14:38:57] - [INFO] - The bot is online!
+[16/09/2021, 14:39:59] - [INFO] - The bot is online!
+[16/09/2021, 14:51:31] - [WARN] - Attempting to register an invalid command object: [object Object]; skipping.
+[16/09/2021, 14:51:31] - [WARN] - Attempting to register an invalid command object: message => {
+    const member = message.mentions.members.first()
+    if (!member) {
+        return message.reply(`Utilisateur pas trouvé ou pas spécifié`)
+    }
+    if (!member.kickable) {
+        return message.reply(`L'utilisateur n'est pas kickable`)
+    }
+    return member
+        .kick()
+        .then(() => message.reply(`L'utilisateur ${member.user.tag} a été kicked`))
+        .catch(error => message.reply(`Une erreur s'est produite`))
+}; skipping.
+[16/09/2021, 14:51:31] - [WARN] - Attempting to register an invalid command object: [object Object]; skipping.
+[16/09/2021, 14:51:32] - [INFO] - The bot is online!
+[16/09/2021, 14:52:16] - [WARN] - Attempting to register an invalid command object: [object Object]; skipping.
+[16/09/2021, 14:52:16] - [WARN] - Attempting to register an invalid command object: [object Object]; skipping.
+[16/09/2021, 14:52:16] - [WARN] - Attempting to register an invalid command object: [object Object]; skipping.
+[16/09/2021, 14:52:17] - [INFO] - The bot is online!
+[16/09/2021, 14:54:03] - [WARN] - Attempting to register an invalid command object: [object Object]; skipping.
+[16/09/2021, 14:54:03] - [WARN] - Attempting to register an invalid command object: [object Object]; skipping.
+[16/09/2021, 14:54:03] - [WARN] - Attempting to register an invalid command object: [object Object]; skipping.
+[16/09/2021, 14:54:04] - [INFO] - The bot is online!
