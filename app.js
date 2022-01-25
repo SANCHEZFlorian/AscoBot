@@ -3,9 +3,17 @@
 // =========================================================
 
 // require the discord.js module
-const { Client, Intents } = require('discord.js');
+const {
+    Client,
+    Intents,
+    MessageEmbed,
+    ChannelManager,
+    guild
+} = require('discord.js');
 // create a new Discord client
-const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES] });
+const client = new Client({
+    intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES]
+});
 // Récupération de la config
 const {
     prefix,
@@ -13,6 +21,13 @@ const {
 // Require du .env et config
 const dotenv = require('dotenv');
 dotenv.config();
+
+const {
+    REST
+} = require('@discordjs/rest');
+const {
+    Routes
+} = require('discord-api-types/v9');
 
 // when the client is ready, run this code
 // this event will only trigger one time after logging in
@@ -22,6 +37,7 @@ client.once('ready', () => {
 
 // login to Discord with your app's token
 client.login(process.env.TOKEN);
+
 
 
 // =========================================================
@@ -57,20 +73,33 @@ client.on(
         if (!message.content.startsWith(prefix) || message.author.bot) return; // Si le message ne commence pas par le préfix ou que c'est un message du bot, ça ne lit pas
         const args = message.content.slice(prefix.length).trim().split(/ +/); // Prend le message, enlève le préfix, et mets chaque mot dans un tableau, en enlevant les espaces
         const command = args.shift().toLowerCase(); // Prend le premier élément du tableau, et le renvoie, tout en le supprimant. Permet de faire plusieurs suites de commande en un message
-
-        // // Ping simple, mais avec message exact
+        const embed = new MessageEmbed()
+            .setAuthor({
+                name: 'OctoBot',
+                iconURL: 'https://imgur.com/WQqHGze.png',
+            })
+            .setColor('#09d2e1');
+        const embed2 = new MessageEmbed()
+            .setAuthor({
+                name: 'OctoBot',
+                iconURL: 'https://imgur.com/WQqHGze.png',
+            })
+            .setColor('#09d2e1');
+        //.setThumbnail('https://imgur.com/WQqHGze.png')
+        //.setTimestamp();
+        // Ping simple, mais avec message exact
         // if (message.content === '!ping') {
         // 	message.channel.send('Pong.');
         // }
 
-        // // Ping simple, avec préfix dans le config.json, et si le message est exact
+        // Ping simple, avec préfix dans le config.json, et si le message est exact
         // if (message.content === `${prefix}ping`) {
         // 	message.channel.send('Pong');
         // } else if (message.content === `${prefix}beep`) {
         // 	message.channel.send('Boop');
         // }
 
-        // // Ping simple, avec préfix variable, et début du message commençant par la commande
+        // Ping simple, avec préfix variable, et début du message commençant par la commande
         // if (message.content.startsWith(`${prefix}ping`)) {
         // 	message.channel.send('Pong');
         // } else if (message.content.startsWith(`${prefix}beep`)) {
@@ -78,73 +107,141 @@ client.on(
 
 
         if (command === 'ping') {
-            message.channel.send('Pong');
+            console.log(message.member.roles);
+            if (message.member.roles.cache.some(role => role.id === '854187217173217310')) {
+                console.log('rôle trouvé');
+            } else {
+                console.log('rôle NON trouvé');
+            }
+            embed.setDescription('Pong');
+            message.channel.send({
+                embeds: [embed]
+            });
+            //message.channel.send('Pong');
         } else if (command === 'beep') {
-            message.channel.send('Boop');
+            embed.setDescription('Boop');
+            message.channel.send({
+                embeds: [embed]
+            });
         } else if (command === 'server') {
-            message.channel.send(`Le nom de ce serveur est : ${message.guild.name}`);
+            embed.setDescription(`Le nom de ce serveur est : ${message.guild.name}`);
+            message.channel.send({
+                embeds: [embed]
+            });
         } else if (command === 'member') {
-            message.channel.send(`Nombre de membre : ${message.guild.memberCount}`);
+            embed.setDescription(`Nombre de membre : ${message.guild.memberCount}`);
+            message.channel.send({
+                embeds: [embed]
+            });
         } else if (command === 'created') {
-            message.channel.send(`Création du serveur ${message.guild.name} : ${message.guild.createdAt}`);
+            embed.setDescription(`Création du serveur ${message.guild.name} : ${message.guild.createdAt}`);
+            message.channel.send({
+                embeds: [embed]
+            });
         } else if (command === 'user-info') {
-            message.channel.send(`Pseudo : ${message.author.username}\nID : ${message.author.id}`);
+            embed.setDescription(`Pseudo : ${message.author.username}\nDiscordTag : ${message.author.tag}\nID : ${message.author.id}`);
+            message.channel.send({
+                embeds: [embed]
+            });
         } else if (command === 'args-info') {
             if (!args.length) {
-                return message.channel.send(`You didn't provide any arguments, ${message.author}!`);
+                embed.setDescription(`You didn't provide any arguments, ${message.author}!`);
+                return message.channel.send({
+                    embeds: [embed]
+                });
             }
-            message.channel.send(`Nom de la commande: ${command}\nArguments: ${args}`);
-
-
+            embed.setDescription(`Nom de la commande: ${command}\nArguments: ${args}`);
+            message.channel.send({
+                embeds: [embed]
+            });
         } else if (hasNumber(command) && command.includes('d')) {
             let dice = command.slice().split('d');
-            if (dice[0] == '') {
-                message.channel.send(`Résultat du dé : ${entierAleatoire(1, Math.round(dice[1]))}`);
+            if (dice[0] == '' || dice[0] == 0 || dice[0] == 1) {
+                result = entierAleatoire(1, Math.round(dice[1]));
+                embed.addField(`Résultat du dé :`, `${result}`);
+                message.channel.send({
+                    content: `<@${message.author.id}>`,
+                    embeds: [embed]
+                });
+                //message.channel.send(`Résultat du dé de <@${message.author.id}> : ${entierAleatoire(1, Math.round(dice[1]))}`);
             } else {
-                let nbDice = Math.round(dice[0]);
-                for (let i = 0; i < nbDice; i++) {
-                    message.channel.send(`Résultat du dé ${i + 1} : \n${entierAleatoire(1, Math.round(dice[1]))}`);
+                if (dice[0] <= 25) {
+                    let nbDice = Math.round(dice[0]);
+                    for (let i = 0; i < nbDice; i++) {
+                        result = entierAleatoire(1, Math.round(dice[1]));
+                        embed.addField(`Résultat du dé ${i + 1} :`, `${result}`);
+                        // message.channel.send(`Résultat du dé ${i + 1} de <@${message.author.id}> : \n${entierAleatoire(1, Math.round(dice[1]))}`);
+                    }
+                    message.channel.send({
+                        content: `<@${message.author.id}>`,
+                        embeds: [embed]
+                    });
+                } else if (dice[0] <= 50) {
+                    let nbDice = Math.round(dice[0]);
+                    for (let i = 0; i <= 25; i++) {
+                        result = entierAleatoire(1, Math.round(dice[1]));
+                        embed.addField(`Résultat du dé ${i + 1} :`, `${result}`);
+                        // message.channel.send(`Résultat du dé ${i + 1} de <@${message.author.id}> : \n${entierAleatoire(1, Math.round(dice[1]))}`);
+                    }
+                    message.channel.send({
+                        content: `<@${message.author.id}>`,
+                        embeds: [embed]
+                    });
+                    for (let j = 25; j < dice[0]; j++) {
+                        result = entierAleatoire(1, Math.round(dice[1]));
+                        embed2.addField(`Résultat du dé ${j + 1} :`, `${result}`);
+                        // message.channel.send(`Résultat du dé ${i + 1} de <@${message.author.id}> : \n${entierAleatoire(1, Math.round(dice[1]))}`);
+                    }
+                    message.channel.send({
+                        content: `<@${message.author.id}>`,
+                        embeds: [embed2]
+                    });
+                } else {
+                    embed.setDescription('Merci de ne lancer que 50 dés maximum.');
+                    message.channel.send({
+                        content: `<@${message.author.id}>`,
+                        embeds: [embed]
+                    });
                 }
             }
         } else if (command === 'avatar') {
-            const embed = new client.MessageEmbed();
             // Si pas de mention, donne l'avatar de l'auteur
             if (!message.mentions.users.size) {
                 embed.setTitle(message.author.username);
+                embed.setDescription('Votre avatar est :');
                 embed.setImage(message.author.displayAvatarURL({
                     format: 'png',
                     dynamic: true,
                     size: 512
                 }));
-                return message.channel.send(embed);
-            } else {
-                //! A DEBUG !!!
-                // Si mention de membre(s), donne l'avatar du(des) membre(s)
-                // message.mentions.users.forEach(user => {
-                //     embed.setTitle("Liste des avatars");
-                //     embed.addField({
-                //         name: `${user.username}`,
-                //         value: `${client.user.displayAvatarURL({ 
-                //             format: 'png', 
-                //             dynamic: true,
-                //             size: 512 
-                //         })}`
-                //     }, )
-                // });
-                embed.setTitle("Liste des avatars");
-                message.mentions.users.map(user => {
-                    // embed.addField({
-                    //     name: `${ message.mentions.users.user.username}`,
-                    //     value: `${client.user.displayAvatarURL({ 
-                    //         format: 'png', 
-                    //         dynamic: true,
-                    //         size: 512 
-                    //     })}`
-                    // })
+                return message.channel.send({
+                    embeds: [embed]
                 });
-                console.log(message.mentions.users);
-                //console.log(message.mentions.users[username]);
-                return message.channel.send(embed);
+            } else {
+                // Si mention de membre(s), donne l'avatar du(des) membre(s)
+                message.mentions.users.forEach(user => {
+                    let avatar = new MessageEmbed();
+                    avatar.setAuthor({
+                        name: 'OctoBot',
+                        iconURL: 'https://imgur.com/WQqHGze.png',
+                    });
+                    avatar.setColor('#09d2e1');
+                    avatar.setThumbnail('https://imgur.com/WQqHGze.png');
+                    avatar.setTimestamp();
+                    avatar.setTitle("Liste des avatars");
+                    avatar.addField(`${user.username}`, `Avatar de ${user.username}`);
+                    avatar.setImage(user.displayAvatarURL({
+                        format: 'png',
+                        dynamic: true,
+                        size: 512
+                    }));
+                    return message.channel.send({
+                        embeds: [avatar]
+                    });
+                });
             }
         }
+        // else if (command.includes('create-team') && ) {
+        //     message.guild.channels.create('test');
+        // }
     });
