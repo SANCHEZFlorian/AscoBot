@@ -5,14 +5,15 @@
 // require the discord.js module
 const {
     Client,
-    Intents,
+    Collection,
+    Events,
     MessageEmbed,
-    ChannelManager,
-    guild
+    GatewayIntentBits
 } = require('discord.js');
+
 // create a new Discord client
 const client = new Client({
-    intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES]
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages]
 });
 // Récupération de la config
 const {
@@ -29,14 +30,15 @@ const {
     Routes
 } = require('discord-api-types/v9');
 
+// login to Discord with your app's token
+client.login(process.env.TOKEN);
+
 // when the client is ready, run this code
 // this event will only trigger one time after logging in
 client.once('ready', () => {
     console.log('Ready!');
 });
 
-// login to Discord with your app's token
-client.login(process.env.TOKEN);
 
 
 
@@ -106,9 +108,10 @@ client.on(
         // 	message.channel.send('Boop');
 
 
+        //* Ping, renvoie un pong
         if (command === 'ping') {
             console.log(message.member.roles);
-            if (message.member.roles.cache.some(role => role.id === '854187217173217310')) {
+            if (message.member.roles.cache.some(role => role.id === '961322995987664986')) {
                 console.log('rôle trouvé');
             } else {
                 console.log('rôle NON trouvé');
@@ -118,32 +121,46 @@ client.on(
                 embeds: [embed]
             });
             //message.channel.send('Pong');
-        } else if (command === 'beep') {
+        }
+        //* Beep, renvoie un boop
+        else if (command === 'beep') {
+            console.log("commande beep");
             embed.setDescription('Boop');
+            embed.addField('test');
             message.channel.send({
-                embeds: [embed]
+                embed: [embed]
             });
-        } else if (command === 'server') {
+        }
+        //* Server, renvoie le nom du serveur
+        else if (command === 'server') {
             embed.setDescription(`Le nom de ce serveur est : ${message.guild.name}`);
             message.channel.send({
                 embeds: [embed]
             });
-        } else if (command === 'member') {
+        }
+        //* Member, renvoie le nombre de membres
+        else if (command === 'member') {
             embed.setDescription(`Nombre de membre : ${message.guild.memberCount}`);
             message.channel.send({
                 embeds: [embed]
             });
-        } else if (command === 'created') {
+        }
+        //* Created, renvoie la date de création du serveur
+        else if (command === 'created') {
             embed.setDescription(`Création du serveur ${message.guild.name} : ${message.guild.createdAt}`);
             message.channel.send({
                 embeds: [embed]
             });
-        } else if (command === 'user-info') {
+        }
+        //* User-info, renvoie des informations sur l'utilisateur (pseudo, tag, id)
+        else if (command === 'user-info') {
             embed.setDescription(`Pseudo : ${message.author.username}\nDiscordTag : ${message.author.tag}\nID : ${message.author.id}`);
             message.channel.send({
                 embeds: [embed]
             });
-        } else if (command === 'args-info') {
+        }
+        //* Args-info, renvoie les arguments de la commande
+        else if (command === 'args-info') {
             if (!args.length) {
                 embed.setDescription(`You didn't provide any arguments, ${message.author}!`);
                 return message.channel.send({
@@ -154,7 +171,9 @@ client.on(
             message.channel.send({
                 embeds: [embed]
             });
-        } else if (hasNumber(command) && command.includes('d')) {
+        }
+        //* XdY, renvoie X nombre aléatoire (chiffre avant le d) entre 1 et Y (le chiffre après d)
+        else if (hasNumber(command) && command.includes('d')) {
             let dice = command.slice().split('d');
             if (dice[0] == '' || dice[0] == 0 || dice[0] == 1) {
                 result = entierAleatoire(1, Math.round(dice[1]));
@@ -204,7 +223,9 @@ client.on(
                     });
                 }
             }
-        } else if (command === 'avatar') {
+        }
+        //* Avatar, renvoie l'avatar de l'utilisateur ou des utilisateurs mentionnés
+        else if (command === 'avatar') {
             // Si pas de mention, donne l'avatar de l'auteur
             if (!message.mentions.users.size) {
                 embed.setTitle(message.author.username);
