@@ -1,2 +1,2 @@
 # AscoBot
- My Discord.js Bot
+ Mon bot Discord codé avec Discord.js
