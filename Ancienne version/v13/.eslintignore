@@ -1,0 +1,4 @@
+node_modules/
+.env
+.doc/*
+doc/liste_fonction.js
