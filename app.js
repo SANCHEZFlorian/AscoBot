@@ -51,12 +51,35 @@ function entierAleatoire(min, max) {
 
 
 client.on('messageCreate', async message => {
-    // On créait l'embed du message
+    // On écoute les messages commençant uniquement par le préfix et on découpe la commande
+    if (!message.content.startsWith(prefix) || message.author.bot) return; // Si le message ne commence pas par le préfix ou que c'est un message du bot, ça ne lit pas
+    const args = message.content.slice(prefix.length).trim().split(/ +/); // Prend le message, enlève le préfix, et mets chaque mot dans un tableau, en enlevant les espaces
+    const command = args.shift().toLowerCase(); // Prend le premier élément du tableau, et le renvoie, tout en le supprimant. Permet de faire plusieurs suites de commande en un message
+
+    // On créé l'embed du message et les paramètres principaux de l'embed (Auteur, couleur par défaut)
+    // On en créé un deuxième pour le cas où on en a besoin de 2 
     const embed = new EmbedBuilder()
+        .setAuthor({
+            name: message.author.username,
+            iconURL: message.author.displayAvatarURL({
+                format: 'png',
+                dynamic: true,
+                size: 512
+            }),
+        })
+        // .setTitle(client.commands.get('name')) //! A vérifié pour affiche le nom de la commande
+        .setColor('#09d2e1')
+        .setFooter({
+            text: 'OctoBot',
+            iconURL: 'https://imgur.com/WQqHGze.png',
+        })
+        .setTimestamp();
+    const embed2 = new EmbedBuilder()
         .setAuthor({
             name: 'OctoBot',
             iconURL: 'https://imgur.com/WQqHGze.png',
         })
+        //.setTitle(client.commands.name) //! A vérifié pour affiche le nom de la commande
         .setColor('#09d2e1');
 
 
@@ -65,9 +88,6 @@ client.on('messageCreate', async message => {
         return client.commands.get("ping").run(client, message);
     }
 
-    if (!message.content.startsWith(prefix) || message.author.bot) return; // Si le message ne commence pas par le préfix ou que c'est un message du bot, ça ne lit pas
-    const args = message.content.slice(prefix.length).trim().split(/ +/); // Prend le message, enlève le préfix, et mets chaque mot dans un tableau, en enlevant les espaces
-    const command = args.shift().toLowerCase(); // Prend le premier élément du tableau, et le renvoie, tout en le supprimant. Permet de faire plusieurs suites de commande en un message
 
     if (command === "test") {
         // message.reply fait un "répondre au message"
@@ -93,7 +113,6 @@ client.on('messageCreate', async message => {
     else if (command === 'beep') {
         console.log("commande beep");
         message.reply('boop');
-        embed.setTitle('titre');
         embed.setDescription('Boop');
         embed.addFields([
             {
@@ -136,7 +155,7 @@ client.on('messageCreate', async message => {
     //* Args-info, renvoie les arguments de la commande
     else if (command === 'args-info') {
         if (!args.length) {
-            embed.setDescription(`You didn't provide any arguments, ${message.author}!`);
+            embed.setDescription(`Il n'y a pas d'argument dans cette commande, ${message.author}!`);
             return message.channel.send({
                 embeds: [embed]
             });
@@ -149,6 +168,7 @@ client.on('messageCreate', async message => {
     //* XdY, renvoie X nombre aléatoire (chiffre avant le d) entre 1 et Y (le chiffre après d)
     else if (hasNumber(command) && command.includes('d')) {
         let dice = command.slice().split('d');
+        // Dans le cas où on a qu'un dé
         if (dice[0] == '' || dice[0] == 0 || dice[0] == 1) {
             let result = entierAleatoire(1, Math.round(dice[1]));
             // embed.addFields(`Résultat du dé :`, `${result}`);
@@ -166,39 +186,63 @@ client.on('messageCreate', async message => {
             });
             //message.channel.send(`Résultat du dé de <@${message.author.id}> : ${entierAleatoire(1, Math.round(dice[1]))}`);
         } else {
+            // Dans le cas où on a jusqu'à 25 dés
             if (dice[0] <= 25) {
                 let nbDice = Math.round(dice[0]);
                 for (let i = 0; i < nbDice; i++) {
                     let result = entierAleatoire(1, Math.round(dice[1]));
-                    embed.addFields(`Résultat du dé ${i + 1} :`, `${result}`);
+                    embed.addFields([
+                        {
+                            name: `Résultat du dé ${i + 1} :`,
+                            value: `${result}`,
+                            inline: true,
+                        }
+                    ]
+                    );
                     // message.channel.send(`Résultat du dé ${i + 1} de <@${message.author.id}> : \n${entierAleatoire(1, Math.round(dice[1]))}`);
                 }
                 message.channel.send({
                     content: `<@${message.author.id}>`,
                     embeds: [embed]
                 });
+                // Dans le cas où on a entre 25 et 50 dés
             } else if (dice[0] <= 50) {
                 let nbDice = Math.round(dice[0]);
-                for (let i = 0; i <= 25; i++) {
+                for (let i = 0; i <= 24; i++) {
                     let result = entierAleatoire(1, Math.round(dice[1]));
-                    embed.addFields(`Résultat du dé ${i + 1} :`, `${result}`);
+                    // embed.addFields(`Résultat du dé ${i + 1} :`, `${result}`);
+                    embed.addFields([
+                        {
+                            name: `Résultat du dé ${i + 1} :`,
+                            // value: `${result}`,
+                            value: `test`,
+                            inline: true,
+                        }
+                    ]
+                    );
                     // message.channel.send(`Résultat du dé ${i + 1} de <@${message.author.id}> : \n${entierAleatoire(1, Math.round(dice[1]))}`);
                 }
-                message.channel.send({
-                    content: `<@${message.author.id}>`,
-                    embeds: [embed]
-                });
                 for (let j = 25; j < dice[0]; j++) {
                     let result = entierAleatoire(1, Math.round(dice[1]));
-                    embed2.addFields(`Résultat du dé ${j + 1} :`, `${result}`);
+                    // embed2.addFields(`Résultat du dé ${j + 1} :`, `${result}`);
+                    embed2.addFields([
+                        {
+                            name: `Résultat du dé ${j + 1} :`,
+                            value: `${result}`,
+                            inline: true,
+                        }
+                    ]
+                    );
                     // message.channel.send(`Résultat du dé ${i + 1} de <@${message.author.id}> : \n${entierAleatoire(1, Math.round(dice[1]))}`);
                 }
                 message.channel.send({
                     content: `<@${message.author.id}>`,
-                    embeds: [embed2]
+                    embeds: [embed, embed2]
                 });
+                // Dans le cas de plus de 50 dés, on ne lance pas
             } else {
                 embed.setDescription('Merci de ne lancer que 50 dés maximum.');
+                embed.setColor('#FF0000');
                 message.channel.send({
                     content: `<@${message.author.id}>`,
                     embeds: [embed]
@@ -210,8 +254,7 @@ client.on('messageCreate', async message => {
     else if (command === 'avatar') {
         // Si pas de mention, donne l'avatar de l'auteur
         if (!message.mentions.users.size) {
-            embed.setTitle(message.author.username);
-            embed.setDescription('Votre avatar est :');
+            embed.setTitle('Votre avatar est :');
             embed.setImage(message.author.displayAvatarURL({
                 format: 'png',
                 dynamic: true,
@@ -223,7 +266,7 @@ client.on('messageCreate', async message => {
         } else {
             // Si mention de membre(s), donne l'avatar du(des) membre(s)
             message.mentions.users.forEach(user => {
-                let avatar = new MessageEmbed();
+                let avatar = new EmbedBuilder();
                 avatar.setAuthor({
                     name: 'OctoBot',
                     iconURL: 'https://imgur.com/WQqHGze.png',
@@ -232,7 +275,13 @@ client.on('messageCreate', async message => {
                 avatar.setThumbnail('https://imgur.com/WQqHGze.png');
                 avatar.setTimestamp();
                 avatar.setTitle("Liste des avatars");
-                avatar.addFields(`${user.username}`, `Avatar de ${user.username}`);
+                avatar.addFields([
+                    {
+                        name: `${user.username}`,
+                        value: `Avatar de ${user.username}`,
+                    }
+                ]
+                );
                 avatar.setImage(user.displayAvatarURL({
                     format: 'png',
                     dynamic: true,
