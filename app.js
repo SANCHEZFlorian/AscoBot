@@ -5,7 +5,7 @@
 // On importe les modules nécessaire
 const Discord = require("discord.js");
 const config = require("./config.json");
-const intents = new Discord.IntentsBitField(3276799);
+const intents = new Discord.IntentsBitField(70368744177655);
 const { MessageEmbed, EmbedBuilder } = require("discord.js");
 const loadCommands = require("./loader/loadCommands");
 const loadEvent = require("./loader/loadEvents");
