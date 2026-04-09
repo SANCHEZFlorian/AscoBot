@@ -1,16 +1,18 @@
 {
+  "name": "ascobot",
+  "version": "1.0.0",
+  "description": "Un bot Discord moderne",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
   "dependencies": {
-    "@discordjs/builders": "^1.4.0",
-    "@discordjs/rest": "^1.5.0",
-    "discord-api-types": "^0.37.26",
-    "discord.js": "^14.7.1",
-    "discord.js-commando": "^0.12.3",
-    "dotenv": "^16.0.3",
-    "eslint": "^8.31.0",
-    "node": "^19.3.0",
-    "npm": "^9.2.0"
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.4.1"
   },
   "devDependencies": {
-    "@types/node": "^18.11.18"
+    "nodemon": "^3.0.3"
   }
 }

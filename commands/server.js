@@ -1,12 +1,34 @@
-const { Discord } = require('discord.js');
+import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 
-module.exports = {
-	name: 'Ping',
-	description: 'Renvoie le nom du serveur', //! A vérifié pour la description de la commande
+export const command = {
+	data: new SlashCommandBuilder()
+		.setName('serveur')
+		.setDescription('Renvoie les informations du serveur'),
+	async execute(interaction) {
+		if (!interaction.guild) {
+			return interaction.reply('Cette commande ne peut être utilisée que sur un serveur.');
+		}
 
+		const embed = new EmbedBuilder()
+			.setTitle('Voici les informations du serveur :')
+			.setColor("#09d2e1")
+			.addFields([
+				{
+					name: `Le nom de ce serveur est : `,
+					value: `${interaction.guild.name}`,
+				},
+				{
+					name: 'Nombre de membres :',
+					value: `${interaction.guild.memberCount}`,
+					inline: true
+				},
+				{
+					name: 'Serveur créé le :',
+					value: `${interaction.guild.createdAt.toDateString()}`,
+					inline: true
+				}
+			]);
 
-    //? A voir pour rajouter les autres informations du serveur, style le nombre de membre, la date de création, etc
-	async run(client, message) {
-		await message.reply(`Le nom de ce serveur est : ${message.guild.name}`)
+		await interaction.reply({ embeds: [embed] });
 	}
 };

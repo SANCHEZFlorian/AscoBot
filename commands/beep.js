@@ -1,10 +1,11 @@
-const { Discord } = require('discord.js');
+import { SlashCommandBuilder } from 'discord.js';
 
-module.exports = {
-	name: 'Beep',
-	description: 'Renvoie "Boop !"', //! A vérifié pour la description de la commande
-
-	async run(client, message) {
-		await message.reply(`Boop !`)
+export const command = {
+	data: new SlashCommandBuilder()
+		.setName('beep')
+		.setDescription('Renvoie Boop !'),
+	async execute(interaction) {
+		await interaction.reply('Boop !');
 	}
 };
+

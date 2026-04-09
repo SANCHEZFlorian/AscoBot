@@ -1,0 +1,484 @@
+{
+  "meta": {
+    "displayName": "Template SHONEN SPIRIT",
+    "description": "Généré le 08/02/2026"
+  },
+  "variables": {
+    "categoryNamePlaceholder": "{{CAT_NAME}}",
+    "prefixPlaceholder": "{{PREFIX}}"
+  },
+  "roles_config": [
+    {
+      "id": "{{ROLE_0}}",
+      "type": "DYNAMIC",
+      "namePattern": "{{NAME}}",
+      "color": "Default",
+      "permissions": "396270916587073",
+      "hoist": false
+    },
+    {
+      "id": "{{ROLE_1}}",
+      "type": "INPUT",
+      "label": "Quel est le rôle Fan ?"
+    },
+    {
+      "id": "{{ROLE_3}}",
+      "type": "DYNAMIC",
+      "namePattern": "{{PREFIX}}_Manageur",
+      "color": "#f1c40f",
+      "permissions": "396288109039169",
+      "hoist": false
+    },
+    {
+      "id": "{{ROLE_4}}",
+      "type": "DYNAMIC",
+      "namePattern": "{{PREFIX}}_Capitaine",
+      "color": "#ff0000",
+      "permissions": "396290256522817",
+      "hoist": false
+    }
+  ],
+  "structure": {
+    "categoryName": "█▓▒ {{CAT_NAME}} ▒▓█",
+    "categoryPermissions": [
+      {
+        "role": "@everyone",
+        "allow": [],
+        "deny": [
+          "ViewChannel"
+        ]
+      },
+      {
+        "role": "{{ROLE_0}}",
+        "allow": [
+          "ViewChannel",
+          "Connect"
+        ],
+        "deny": []
+      },
+      {
+        "role": "{{ROLE_1}}",
+        "allow": [
+          "ViewChannel"
+        ],
+        "deny": []
+      }
+    ],
+    "channels": [
+      {
+        "name": "『🔗』liens-utiles",
+        "type": "GUILD_TEXT",
+        "overwrites": [
+          {
+            "role": "@everyone",
+            "allow": [],
+            "deny": [
+              "ViewChannel"
+            ]
+          },
+          {
+            "role": "{{ROLE_0}}",
+            "allow": [
+              "ViewChannel",
+              "Connect"
+            ],
+            "deny": [
+              "CreateInstantInvite",
+              "AddReactions",
+              "SendMessages",
+              "CreatePublicThreads",
+              "SendMessagesInThreads"
+            ]
+          },
+          {
+            "role": "{{ROLE_1}}",
+            "allow": [],
+            "deny": [
+              "ViewChannel"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "╭🔊╯ Officiel",
+        "type": "GUILD_VOICE",
+        "overwrites": [
+          {
+            "role": "@everyone",
+            "allow": [],
+            "deny": [
+              "ViewChannel"
+            ]
+          },
+          {
+            "role": "{{ROLE_0}}",
+            "allow": [
+              "ViewChannel",
+              "Connect"
+            ],
+            "deny": []
+          },
+          {
+            "role": "{{ROLE_1}}",
+            "allow": [
+              "ViewChannel",
+              "Speak"
+            ],
+            "deny": [
+              "Connect"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "╭📣╯ Management",
+        "type": "GUILD_VOICE",
+        "overwrites": [
+          {
+            "role": "@everyone",
+            "allow": [],
+            "deny": [
+              "ViewChannel",
+              "Connect"
+            ]
+          },
+          {
+            "role": "{{ROLE_0}}",
+            "allow": [
+              "Stream",
+              "Connect",
+              "Speak",
+              "UseVAD"
+            ],
+            "deny": [
+              "ViewChannel"
+            ]
+          },
+          {
+            "role": "{{ROLE_1}}",
+            "allow": [
+              "Connect"
+            ],
+            "deny": [
+              "ViewChannel"
+            ]
+          },
+          {
+            "role": "{{ROLE_3}}",
+            "allow": [
+              "ViewChannel",
+              "Connect"
+            ],
+            "deny": []
+          },
+          {
+            "role": "{{ROLE_4}}",
+            "allow": [
+              "ViewChannel",
+              "Connect"
+            ],
+            "deny": []
+          }
+        ]
+      },
+      {
+        "name": "『📢』annonces",
+        "type": "GUILD_TEXT",
+        "overwrites": [
+          {
+            "role": "@everyone",
+            "allow": [],
+            "deny": [
+              "PrioritySpeaker",
+              "Stream",
+              "ViewChannel",
+              "Connect",
+              "Speak",
+              "MuteMembers",
+              "DeafenMembers",
+              "MoveMembers",
+              "UseVAD",
+              "RequestToSpeak",
+              "ManageEvents",
+              "UseSoundboard",
+              "UseExternalSounds"
+            ]
+          },
+          {
+            "role": "{{ROLE_3}}",
+            "allow": [
+              "ViewChannel",
+              "SendMessages",
+              "CreatePublicThreads"
+            ],
+            "deny": [
+              "CreateInstantInvite"
+            ]
+          },
+          {
+            "role": "{{ROLE_1}}",
+            "allow": [],
+            "deny": [
+              "ViewChannel"
+            ]
+          },
+          {
+            "role": "{{ROLE_0}}",
+            "allow": [
+              "AddReactions",
+              "ViewChannel",
+              "Connect"
+            ],
+            "deny": [
+              "CreateInstantInvite",
+              "SendMessages",
+              "CreatePublicThreads"
+            ]
+          },
+          {
+            "role": "{{ROLE_4}}",
+            "allow": [
+              "ViewChannel",
+              "SendMessages",
+              "CreatePublicThreads"
+            ],
+            "deny": [
+              "CreateInstantInvite"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "『📅』disponibilité",
+        "type": "GUILD_TEXT",
+        "overwrites": [
+          {
+            "role": "@everyone",
+            "allow": [],
+            "deny": [
+              "ViewChannel"
+            ]
+          },
+          {
+            "role": "{{ROLE_3}}",
+            "allow": [
+              "ViewChannel",
+              "SendMessages",
+              "CreatePublicThreads"
+            ],
+            "deny": [
+              "CreateInstantInvite"
+            ]
+          },
+          {
+            "role": "{{ROLE_1}}",
+            "allow": [],
+            "deny": [
+              "ViewChannel"
+            ]
+          },
+          {
+            "role": "{{ROLE_4}}",
+            "allow": [
+              "ViewChannel",
+              "SendMessages",
+              "CreatePublicThreads"
+            ],
+            "deny": [
+              "CreateInstantInvite"
+            ]
+          },
+          {
+            "role": "{{ROLE_0}}",
+            "allow": [
+              "ViewChannel",
+              "Connect"
+            ],
+            "deny": [
+              "CreateInstantInvite",
+              "SendMessages",
+              "CreatePublicThreads"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "『📓』plannings",
+        "type": "GUILD_TEXT",
+        "overwrites": [
+          {
+            "role": "@everyone",
+            "allow": [],
+            "deny": [
+              "ViewChannel"
+            ]
+          },
+          {
+            "role": "{{ROLE_0}}",
+            "allow": [
+              "ViewChannel",
+              "Connect"
+            ],
+            "deny": [
+              "CreateInstantInvite",
+              "SendMessages",
+              "CreatePublicThreads"
+            ]
+          },
+          {
+            "role": "{{ROLE_1}}",
+            "allow": [],
+            "deny": [
+              "ViewChannel"
+            ]
+          },
+          {
+            "role": "{{ROLE_3}}",
+            "allow": [
+              "ViewChannel",
+              "SendMessages",
+              "CreatePublicThreads"
+            ],
+            "deny": []
+          },
+          {
+            "role": "{{ROLE_4}}",
+            "allow": [
+              "ViewChannel",
+              "SendMessages",
+              "CreatePublicThreads"
+            ],
+            "deny": []
+          }
+        ]
+      },
+      {
+        "name": "『⏰』absences-retards",
+        "type": "GUILD_TEXT",
+        "overwrites": [
+          {
+            "role": "@everyone",
+            "allow": [],
+            "deny": [
+              "ViewChannel"
+            ]
+          },
+          {
+            "role": "{{ROLE_0}}",
+            "allow": [
+              "ViewChannel",
+              "Connect"
+            ],
+            "deny": []
+          },
+          {
+            "role": "{{ROLE_1}}",
+            "allow": [],
+            "deny": [
+              "ViewChannel"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "『💼』management",
+        "type": "GUILD_TEXT",
+        "overwrites": [
+          {
+            "role": "@everyone",
+            "allow": [],
+            "deny": [
+              "ViewChannel"
+            ]
+          },
+          {
+            "role": "{{ROLE_3}}",
+            "allow": [
+              "ViewChannel"
+            ],
+            "deny": []
+          },
+          {
+            "role": "{{ROLE_1}}",
+            "allow": [],
+            "deny": [
+              "ViewChannel"
+            ]
+          },
+          {
+            "role": "{{ROLE_4}}",
+            "allow": [
+              "ViewChannel"
+            ],
+            "deny": []
+          },
+          {
+            "role": "{{ROLE_0}}",
+            "allow": [
+              "Connect"
+            ],
+            "deny": [
+              "ViewChannel"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "『🎬』à-regarder",
+        "type": "GUILD_TEXT",
+        "overwrites": [
+          {
+            "role": "@everyone",
+            "allow": [],
+            "deny": [
+              "ViewChannel"
+            ]
+          },
+          {
+            "role": "{{ROLE_0}}",
+            "allow": [
+              "ViewChannel",
+              "Connect"
+            ],
+            "deny": []
+          },
+          {
+            "role": "{{ROLE_1}}",
+            "allow": [],
+            "deny": [
+              "ViewChannel"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "『💬』discussion",
+        "type": "GUILD_TEXT",
+        "overwrites": [
+          {
+            "role": "@everyone",
+            "allow": [],
+            "deny": [
+              "ViewChannel"
+            ]
+          },
+          {
+            "role": "{{ROLE_0}}",
+            "allow": [
+              "ViewChannel",
+              "Connect"
+            ],
+            "deny": []
+          },
+          {
+            "role": "{{ROLE_1}}",
+            "allow": [],
+            "deny": [
+              "ViewChannel"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
