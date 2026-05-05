@@ -4,12 +4,10 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const configPath = path.join(__dirname, '../config.json');
-const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
 import pool from '../utils/db.js';
 
-const prefix = config.prefix || '!';
+const prefix = process.env.PREFIX || '!';
 
 // Cache simple pour ne pas harceler la BDD
 let lastCacheUpdate = 0;
