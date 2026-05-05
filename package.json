@@ -9,8 +9,10 @@
     "dev": "nodemon index.js"
   },
   "dependencies": {
+    "canvas": "^3.2.3",
     "discord.js": "^14.14.1",
-    "dotenv": "^16.4.1"
+    "dotenv": "^16.4.1",
+    "mysql2": "^3.22.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.3"

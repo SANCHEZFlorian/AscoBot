@@ -41,6 +41,23 @@ export const event = {
             }
             embed.setTimestamp();
 
+            const roles = member.roles.cache
+                .filter(r => r.id !== member.guild.id)
+                .sort((a, b) => b.position - a.position)
+                .map(r => r.toString());
+                
+            let rolesStr = roles.length > 0 ? roles.join(' ') : 'Aucun rôle';
+            if (rolesStr.length > 1024) {
+                rolesStr = rolesStr.substring(0, 1020) + '...';
+            }
+
+            const joinedAt = member.joinedTimestamp ? `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>` : 'Inconnu';
+
+            embed.addFields(
+                { name: 'Rejoint le', value: joinedAt, inline: true },
+                { name: 'Rôles précédents', value: rolesStr, inline: false }
+            );
+
             await channel.send({ embeds: [embed] });
         } catch (error) {}
     },

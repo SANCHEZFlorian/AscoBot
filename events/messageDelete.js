@@ -66,7 +66,19 @@ export const event = {
                     iconURL: message.author.displayAvatarURL({ dynamic: true })
                 });
                 embed.setDescription(`Un message de <@${message.author.id}> a été${executorText} dans <#${message.channelId}> à <t:${Math.floor(Date.now() / 1000)}:T>.`);
-                embed.addFields({ name: 'Contenu du message', value: message.content ? `\`\`\`\n${message.content.length > 120 ? message.content.substring(0, 120) + '...' : message.content}\n\`\`\`` : '*(Aucun texte / Information manquante si fichier joint)*' });
+                embed.addFields({ name: 'Contenu du message', value: message.content ? `\`\`\`\n${message.content.length > 1000 ? message.content.substring(0, 1000) + '...' : message.content}\n\`\`\`` : '*(Aucun texte)*' });
+                
+                if (message.attachments.size > 0) {
+                    const attachments = Array.from(message.attachments.values());
+                    const attachmentUrlsStr = attachments.map((a, i) => `[Lien vers le Fichier ${i+1}](${a.url})`).join('\n');
+                    
+                    const imageAttachment = attachments.find(a => a.contentType && a.contentType.startsWith('image/'));
+                    if (imageAttachment) {
+                        embed.setImage(imageAttachment.proxyURL || imageAttachment.url);
+                    }
+                    
+                    embed.addFields({ name: 'Pièces jointes', value: attachmentUrlsStr });
+                }
                 
                 let reactionsText = "";
                 if (message.reactions.cache.size > 0) {

@@ -1,4 +1,4 @@
-import { EmbedBuilder } from 'discord.js';
+import { EmbedBuilder, AttachmentBuilder } from 'discord.js';
 import { getLogChannelId } from '../utils/logManager.js';
 
 export const event = {
@@ -19,6 +19,20 @@ export const event = {
             const channel = await newMessage.client.channels.fetch(logChannelId);
             if (!channel) return;
 
+            const oldContent = oldMessage.content || '';
+            const newContent = newMessage.content || '';
+
+            let oldField = oldContent ? `\`\`\`\n${oldContent.length > 1000 ? oldContent.substring(0, 1000) + '... (voir fichier joint)' : oldContent}\n\`\`\`` : '*(Aucun texte / Image)*';
+            let newField = newContent ? `\`\`\`\n${newContent.length > 1000 ? newContent.substring(0, 1000) + '... (voir fichier joint)' : newContent}\n\`\`\`` : '*(Aucun texte / Image)*';
+
+            const attachments = [];
+            if (oldContent.length > 1000) {
+                attachments.push(new AttachmentBuilder(Buffer.from(oldContent, 'utf-8'), { name: 'ancien_message.txt' }));
+            }
+            if (newContent.length > 1000) {
+                attachments.push(new AttachmentBuilder(Buffer.from(newContent, 'utf-8'), { name: 'nouveau_message.txt' }));
+            }
+
             const embed = new EmbedBuilder()
                 .setTitle('✏️ Message Modifié')
                 .setColor('#FFD700') // Jaune
@@ -28,13 +42,13 @@ export const event = {
                 })
                 .setDescription(`Un message de <@${newMessage.author.id}> a été modifié dans <#${newMessage.channelId}> à <t:${Math.floor(Date.now() / 1000)}:T>. \n[Voir le message](${newMessage.url})`)
                 .addFields(
-                    { name: 'Ancien message', value: oldMessage.content ? `\`\`\`\n${oldMessage.content.length > 120 ? oldMessage.content.substring(0, 120) + '...' : oldMessage.content}\n\`\`\`` : '*(Aucun texte / Image)*' },
-                    { name: 'Nouveau message', value: newMessage.content ? `\`\`\`\n${newMessage.content.length > 120 ? newMessage.content.substring(0, 120) + '...' : newMessage.content}\n\`\`\`` : '*(Aucun texte / Image)*' }
+                    { name: 'Ancien message', value: oldField },
+                    { name: 'Nouveau message', value: newField }
                 )
                 .setTimestamp()
                 .setFooter({ text: `ID du Message : ${newMessage.id}` });
 
-            await channel.send({ embeds: [embed] });
+            await channel.send({ embeds: [embed], files: attachments });
         } catch (error) {
             console.error("Erreur lors de l'envoi du log messageUpdate :", error);
         }

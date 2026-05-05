@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
+import { initDatabaseModuleA } from './utils/db.js';
 
 dotenv.config();
 
@@ -60,6 +61,13 @@ for (const file of eventFiles) {
     }
 }
 
-client.login(process.env.TOKEN).catch(console.error);
+client.once('ready', () => {
+    initDatabaseModuleA();
+});
+
+const isProd = process.env.NODE_ENV === 'production';
+const TOKEN = isProd ? process.env.PROD_TOKEN : process.env.DEV_TOKEN;
+
+client.login(TOKEN).catch(console.error);
 
 export { client, commandsForRest };

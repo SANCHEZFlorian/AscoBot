@@ -6,7 +6,10 @@ export const event = {
     async execute(client) {
         console.log(`Ready! Logged in as ${client.user.tag}`);
 
-        const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+        const isProd = process.env.NODE_ENV === 'production';
+        const TOKEN = isProd ? process.env.PROD_TOKEN : process.env.DEV_TOKEN;
+
+        const rest = new REST({ version: '10' }).setToken(TOKEN);
 
         try {
             const commandsForRest = client.commandsForRest || [];
