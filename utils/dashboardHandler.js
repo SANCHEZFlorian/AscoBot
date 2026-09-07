@@ -899,21 +899,33 @@ export async function handleDashboardSelectMenu(interaction) {
         });
 
         const filter = (reaction, user) => user.id === interaction.user.id && !user.bot;
-        const collector = promptMsg.createReactionCollector({ filter, max: 1, time: 60000 });
+        const collector = promptMsg.createReactionCollector({ filter, time: 60000 });
 
         collector.on('collect', async (reaction) => {
             const emojiStr = reaction.emoji.id 
                 ? (reaction.emoji.animated ? `<a:${reaction.emoji.name}:${reaction.emoji.id}>` : `<:${reaction.emoji.name}:${reaction.emoji.id}>`)
                 : reaction.emoji.name;
 
-            const descStr = autoroleDescCache.get(`${msgId}_${roleId}`) || '';
-            autoroleDescCache.delete(`${msgId}_${roleId}`);
-
             try {
+                const conn = await pool.getConnection();
+                // Vérifier si cet émoji est déjà utilisé pour un AUTRE rôle sur ce panneau
+                const [existing] = await conn.query('SELECT * FROM reaction_roles WHERE guild_id = ? AND message_id = ? AND emoji = ?', [interaction.guildId, msgId, emojiStr]);
+                if (existing.length > 0 && existing[0].role_id !== roleId) {
+                    conn.release();
+                    await promptMsg.channel.send({
+                        content: `⚠️ <@${interaction.user.id}> L'émoji **${emojiStr}** est déjà attribué au rôle <@&${existing[0].role_id}> sur ce panneau !\n👉 **Chaque rôle doit avoir son propre émoji différent.** Réagissez avec un autre émoji ci-dessus.`
+                    }).then(msg => setTimeout(() => msg.delete().catch(()=>{}), 8000)).catch(()=>{});
+                    return; // Le collecteur reste actif pour laisser réagir avec un autre émoji
+                }
+
+                collector.stop('saved');
+
+                const descStr = autoroleDescCache.get(`${msgId}_${roleId}`) || '';
+                autoroleDescCache.delete(`${msgId}_${roleId}`);
+
                 const role = interaction.guild.roles.cache.get(roleId);
                 const roleName = role ? role.name : '';
 
-                const conn = await pool.getConnection();
                 await conn.query(`
                     INSERT INTO reaction_roles (guild_id, channel_id, message_id, role_id, emoji, description, role_name)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
