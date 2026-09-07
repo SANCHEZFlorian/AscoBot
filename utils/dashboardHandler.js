@@ -327,7 +327,16 @@ export async function handleDashboardButton(interaction) {
                 .setStyle(ButtonStyle.Secondary)
                 .setEmoji('🔍');
 
-            if (panels.length === 0) {
+            const seen = new Set();
+            const uniquePanels = [];
+            for (const p of panels) {
+                if (p.message_id && p.channel_id && p.channel_id !== 'pick' && !seen.has(p.message_id)) {
+                    seen.add(p.message_id);
+                    uniquePanels.push(p);
+                }
+            }
+
+            if (uniquePanels.length === 0) {
                 const row = new ActionRowBuilder().addComponents(manualBtn);
                 return interaction.reply({
                     content: '💡 **Aucun panneau auto-rôle n\'est encore enregistré en base de données.**\n\nSi vous avez déjà créé un panneau (ou si vous souhaitez configurer un message existant), cliquez ci-dessous pour renseigner son ID de message :',
@@ -336,11 +345,12 @@ export async function handleDashboardButton(interaction) {
                 });
             }
 
-            const options = panels.map((p, i) => {
+            const options = uniquePanels.map((p, i) => {
                 const channel = interaction.guild.channels.cache.get(p.channel_id);
                 const channelName = channel ? `#${channel.name}` : `#salon`;
+                const label = (p.title && p.title.trim()) ? p.title.trim().substring(0, 100) : `Panneau #${i + 1}`;
                 return {
-                    label: (p.title || `Panneau #${i + 1}`).substring(0, 100),
+                    label,
                     value: `${p.channel_id}_${p.message_id}`,
                     description: `${channelName} • ID: ...${p.message_id.slice(-6)}`.substring(0, 100)
                 };
@@ -414,18 +424,31 @@ export async function handleDashboardButton(interaction) {
     if (id === 'btn_eng_autoroledel') {
         try {
             const conn = await pool.getConnection();
-            const [panels] = await conn.query('SELECT DISTINCT channel_id, message_id FROM reaction_roles WHERE guild_id = ?', [interaction.guildId]);
+            const [panels] = await conn.query("SELECT DISTINCT channel_id, message_id FROM reaction_roles WHERE guild_id = ? AND channel_id != 'pick'", [interaction.guildId]);
             conn.release();
 
             if (panels.length === 0) {
-                return interaction.reply({ content: '❌ Aucun panneau auto-rôle n\'est configuré sur ce serveur.', ephemeral: true });
+                return interaction.reply({ content: '❌ Aucun rôle n\'est encore configuré sur les panneaux de ce serveur.', ephemeral: true });
             }
 
-            const options = panels.map((p, i) => ({
-                label: `Panneau #${i + 1}`,
-                value: `${p.channel_id}_${p.message_id}`,
-                description: `Salon: #... • Message: ${p.message_id.slice(-6)}`
-            })).slice(0, 25);
+            const seen = new Set();
+            const uniquePanels = [];
+            for (const p of panels) {
+                if (p.message_id && p.channel_id && !seen.has(p.message_id)) {
+                    seen.add(p.message_id);
+                    uniquePanels.push(p);
+                }
+            }
+
+            const options = uniquePanels.map((p, i) => {
+                const channel = interaction.guild.channels.cache.get(p.channel_id);
+                const channelName = channel ? `#${channel.name}` : `#salon`;
+                return {
+                    label: `Panneau #${i + 1}`,
+                    value: `${p.channel_id}_${p.message_id}`,
+                    description: `${channelName} • ID: ...${p.message_id.slice(-6)}`.substring(0, 100)
+                };
+            }).slice(0, 25);
 
             const select = new StringSelectMenuBuilder()
                 .setCustomId('sel_eng_autoroledel_panel')
