@@ -150,7 +150,7 @@ export const event = {
                 await thread.setArchived(true, `Fermé par ${interaction.user.tag}`);
             }
         }
-        else if (interaction.isStringSelectMenu() || interaction.isRoleSelectMenu()) {
+        else if (interaction.isStringSelectMenu() || interaction.isRoleSelectMenu() || interaction.isChannelSelectMenu()) {
             if (interaction.customId === 'autorole_menu') {
                 await interaction.deferReply({ ephemeral: true });
 

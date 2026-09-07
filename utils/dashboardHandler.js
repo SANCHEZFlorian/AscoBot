@@ -1,4 +1,4 @@
-import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle, ChannelType, StringSelectMenuBuilder, RoleSelectMenuBuilder } from 'discord.js';
+import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle, ChannelType, StringSelectMenuBuilder, RoleSelectMenuBuilder, ChannelSelectMenuBuilder } from 'discord.js';
 import { getDashboardHome, getDashboardMod, getDashboardReact, getDashboardLogs, getDashboardEngage } from './dashboardUI.js';
 import pool from './db.js';
 import { getLogChannelId, setLogChannelId } from './logManager.js';
@@ -175,7 +175,50 @@ export async function handleDashboardButton(interaction) {
         return;
     }
 
-    // --- ACTIONS LOGS ---
+    // --- ACTIONS LOGS & WELCOME ---
+    if (id === 'btn_logs_welcomeconfig') {
+        const embed = new EmbedBuilder()
+            .setTitle('👋 Configuration : Bienvenue & Départs')
+            .setColor('#3498DB')
+            .setDescription('**Comment souhaitez-vous organiser l\'accueil et les départs de vos membres ?**\n\n' +
+                '• **🔄 Salon unique (Groupé) :** Les arrivées (carte image) et les départs seront publiés dans un seul et même salon.\n' +
+                '• **🔀 Salons distincts (Séparé) :** Un salon dédié pour souhaiter la bienvenue publiquement aux arrivants, et un salon distinct pour la journalisation des départs / expulsions.')
+            .setFooter({ text: 'Sélectionnez une option ci-dessous pour continuer' });
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('btn_welcome_choice_single').setLabel('🔄 Regrouper (1 seul salon)').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('btn_welcome_choice_split').setLabel('🔀 Séparer (2 salons distincts)').setStyle(ButtonStyle.Success)
+        );
+
+        return interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+    }
+
+    if (id === 'btn_welcome_choice_single') {
+        const channelSelect = new ChannelSelectMenuBuilder()
+            .setCustomId('sel_welcome_single_channel')
+            .setPlaceholder('Sélectionnez le salon pour arrivées & départs...')
+            .setChannelTypes(ChannelType.GuildText);
+
+        return interaction.update({
+            content: '👉 **Sélectionnez ci-dessous le salon unique qui recevra les arrivées et les départs :**',
+            embeds: [],
+            components: [new ActionRowBuilder().addComponents(channelSelect)]
+        });
+    }
+
+    if (id === 'btn_welcome_choice_split') {
+        const channelSelect = new ChannelSelectMenuBuilder()
+            .setCustomId('sel_welcome_split_welcome_channel')
+            .setPlaceholder('Sélectionnez le salon de Bienvenue / Arrivées...')
+            .setChannelTypes(ChannelType.GuildText);
+
+        return interaction.update({
+            content: '👉 **Étape 1/2 :** Sélectionnez le salon public pour les **Messages de Bienvenue & Arrivées** (avec la carte image) :',
+            embeds: [],
+            components: [new ActionRowBuilder().addComponents(channelSelect)]
+        });
+    }
+
     if (id === 'btn_logs_captcharole') {
         const roleSelect = new RoleSelectMenuBuilder()
             .setCustomId('sel_logs_captcharole')
@@ -195,10 +238,11 @@ export async function handleDashboardButton(interaction) {
                 logCat = await interaction.guild.channels.create({ name: 'LOGS-ASCOBOT', type: ChannelType.GuildCategory });
             }
             const logsToCreate = [
+                { name: 'bienvenue', key: 'bienvenue' },
+                { name: 'departs', key: 'departs' },
                 { name: 'moderation', key: 'moderation' },
                 { name: 'vocal', key: 'vocal' },
                 { name: 'messages', key: 'messages' },
-                { name: 'arrivees-departs', key: 'arrivees-departs' },
                 { name: 'serveur', key: 'serveur' }
             ];
 
@@ -210,7 +254,7 @@ export async function handleDashboardButton(interaction) {
                 });
                 setLogChannelId(interaction.guildId, log.key, newChannel.id);
             }
-            await interaction.editReply('✅ Tous les salons de logs modération ont été créés et linkés !');
+            await interaction.editReply('✅ Tous les salons de logs et bienvenue ont été créés et associés !');
         } catch (error) {
             await interaction.editReply('❌ Erreur lors du déploiement (Permissions ?).');
         }
@@ -219,44 +263,114 @@ export async function handleDashboardButton(interaction) {
 
     // --- ACTIONS ENGAGEMENT ---
     if (id === 'btn_eng_voice') {
+        const embed = new EmbedBuilder()
+            .setTitle('🎙️ Créer un salon « Join to Create »')
+            .setColor('#3498DB')
+            .setDescription('Un **salon vocal master** sera créé à la racine du serveur.\n\nQuand un membre le rejoindra, un salon vocal temporaire lui sera automatiquement créé. Il disparaîtra quand tout le monde l\'aura quitté.\n\n⚠️ *Un seul salon master est nécessaire par serveur.*');
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('btn_eng_voice_confirm').setLabel('Confirmer la création').setStyle(ButtonStyle.Success).setEmoji('✅'),
+            new ButtonBuilder().setCustomId('nav_config_engage').setLabel('Annuler').setStyle(ButtonStyle.Secondary).setEmoji('◀')
+        );
+        return interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+    }
+
+    if (id === 'btn_eng_voice_confirm') {
         await interaction.deferReply({ ephemeral: true });
         try {
             const masterChannel = await interaction.guild.channels.create({ name: '➕ Créer un salon', type: ChannelType.GuildVoice });
             const conn = await pool.getConnection();
             await conn.query('INSERT INTO voice_masters (guild_id, channel_id) VALUES (?, ?)', [interaction.guildId, masterChannel.id]);
             conn.release();
-            await interaction.editReply('✅ Salon Vocal Master "Join To Create" créé à la racine !');
-        } catch(e) { await interaction.editReply('❌ Erreur vocale.'); }
+            await interaction.editReply(`✅ **Salon Vocal Master créé avec succès !**\n🎙️ ${masterChannel} — Les membres peuvent le rejoindre pour créer leur propre salon.`);
+        } catch(e) { await interaction.editReply('❌ Erreur lors de la création (permissions insuffisantes ?).'); }
         return;
     }
 
     if (id === 'btn_eng_ticket') {
-        const embed = new EmbedBuilder().setTitle('🎫 Centre de Support').setDescription('Cliquez ci-dessous pour ouvrir un ticket').setColor('#2980B9');
-        const actionRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('ticket_create_support').setLabel('Support').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId('ticket_create_question').setLabel('Question').setStyle(ButtonStyle.Secondary)
-        );
-        await interaction.channel.send({ embeds: [embed], components: [actionRow] });
-        return interaction.reply({ content: '✅ Panneau de billets déployé ICI.', ephemeral: true });
+        const channelSelect = new ChannelSelectMenuBuilder()
+            .setCustomId('sel_eng_ticket_channel')
+            .setPlaceholder('Sélectionnez le salon pour le panneau de tickets…')
+            .setChannelTypes(ChannelType.GuildText);
+
+        return interaction.reply({
+            content: '🎫 **Déployer un panneau de tickets**\n\n👉 Sélectionnez ci-dessous le salon dans lequel le panneau sera envoyé :\n\n*Les membres pourront cliquer sur les boutons pour ouvrir un ticket.*',
+            components: [new ActionRowBuilder().addComponents(channelSelect)],
+            ephemeral: true
+        });
     }
 
     if (id === 'btn_eng_autorole') {
-        const modal = new ModalBuilder().setCustomId('modal_eng_autorolecreate').setTitle('Panneau Auto-Rôle');
+        const modal = new ModalBuilder().setCustomId('modal_eng_autorolecreate').setTitle('Créer un Panneau Auto-Rôle');
         modal.addComponents(
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('titre').setLabel('Titre de l\'embed').setStyle(TextInputStyle.Short).setRequired(true)),
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('desc').setLabel('Description').setStyle(TextInputStyle.Paragraph).setRequired(true))
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('titre').setLabel('Titre du panneau').setStyle(TextInputStyle.Short).setRequired(false).setPlaceholder('Ex: 🎭 Choisissez vos Rôles')),
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('desc').setLabel('Message d\'introduction').setStyle(TextInputStyle.Paragraph).setRequired(false).setPlaceholder('Ex: Réagissez aux émojis ci-dessous pour obtenir les rôles correspondants et personnaliser votre expérience.'))
         );
         return interaction.showModal(modal);
     }
 
     if (id === 'btn_eng_autoroleadd') {
-        const modal = new ModalBuilder().setCustomId('modal_eng_autoroleadd').setTitle('Ajouter option à un panneau');
-        modal.addComponents(
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('msg').setLabel('ID du Message du panneau').setStyle(TextInputStyle.Short).setRequired(true)),
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('label').setLabel('Texte affiché pour l\'option').setStyle(TextInputStyle.Short).setRequired(true)),
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('emoji').setLabel('Emoji (Optionnel)').setStyle(TextInputStyle.Short).setRequired(false))
-        );
-        return interaction.showModal(modal);
+        try {
+            const conn = await pool.getConnection();
+            const [panels] = await conn.query('SELECT DISTINCT channel_id, message_id FROM reaction_roles WHERE guild_id = ?', [interaction.guildId]);
+            conn.release();
+
+            if (panels.length === 0) {
+                return interaction.reply({ content: '❌ Aucun panneau auto-rôle n\'existe encore.\n👉 Créez-en un d\'abord avec **« Créer Panneau »**.', ephemeral: true });
+            }
+
+            const options = panels.map((p, i) => ({
+                label: `Panneau #${i + 1}`,
+                value: `${p.channel_id}_${p.message_id}`,
+                description: `Salon: #... • Message: ${p.message_id.slice(-6)}`
+            })).slice(0, 25);
+
+            const select = new StringSelectMenuBuilder()
+                .setCustomId('sel_eng_autoroleadd_panel')
+                .setPlaceholder('Sélectionnez le panneau auquel ajouter un rôle…')
+                .addOptions(options);
+
+            return interaction.reply({
+                content: '🎯 **Quel panneau souhaitez-vous modifier ?**\nSélectionnez le panneau auto-rôle ci-dessous :',
+                components: [new ActionRowBuilder().addComponents(select)],
+                ephemeral: true
+            });
+        } catch(e) {
+            console.error("Erreur listing panneaux :", e);
+            return interaction.reply({ content: '❌ Erreur lors de la récupération des panneaux.', ephemeral: true });
+        }
+    }
+
+    if (id === 'btn_eng_autoroledel') {
+        try {
+            const conn = await pool.getConnection();
+            const [panels] = await conn.query('SELECT DISTINCT channel_id, message_id FROM reaction_roles WHERE guild_id = ?', [interaction.guildId]);
+            conn.release();
+
+            if (panels.length === 0) {
+                return interaction.reply({ content: '❌ Aucun panneau auto-rôle n\'est configuré sur ce serveur.', ephemeral: true });
+            }
+
+            const options = panels.map((p, i) => ({
+                label: `Panneau #${i + 1}`,
+                value: `${p.channel_id}_${p.message_id}`,
+                description: `Salon: #... • Message: ${p.message_id.slice(-6)}`
+            })).slice(0, 25);
+
+            const select = new StringSelectMenuBuilder()
+                .setCustomId('sel_eng_autoroledel_panel')
+                .setPlaceholder('Sélectionnez le panneau dont retirer un rôle…')
+                .addOptions(options);
+
+            return interaction.reply({
+                content: '🗑️ **De quel panneau souhaitez-vous retirer un rôle ?**\nSélectionnez le panneau ci-dessous :',
+                components: [new ActionRowBuilder().addComponents(select)],
+                ephemeral: true
+            });
+        } catch(e) {
+            console.error("Erreur listing panneaux :", e);
+            return interaction.reply({ content: '❌ Erreur lors de la récupération des panneaux.', ephemeral: true });
+        }
     }
 }
 
@@ -322,33 +436,50 @@ export async function handleDashboardModal(interaction) {
     }
 
     if (id === 'modal_eng_autorolecreate') {
-        const title = interaction.fields.getTextInputValue('titre');
-        const desc = interaction.fields.getTextInputValue('desc');
+        const title = interaction.fields.getTextInputValue('titre') || '🎭 Choisissez vos Rôles';
+        const desc = interaction.fields.getTextInputValue('desc') || 'Sélectionnez les rôles qui vous intéressent pour accéder aux salons associés ou personnaliser vos notifications.';
 
-        const embed = new EmbedBuilder().setTitle(title).setDescription(desc).setColor('#3498DB');
-        const selectMenu = new StringSelectMenuBuilder().setCustomId('autorole_menu').setPlaceholder('Sélectionnez vos rôles ci-dessous...').setMinValues(0).setMaxValues(1)
-            .addOptions([{ label: 'Aucun rôle configuré', description: 'Admin doit le faire.', value: 'dummy' }]);
-        const row = new ActionRowBuilder().addComponents(selectMenu);
-        const rep = await interaction.channel.send({ embeds: [embed], components: [row] });
-        return interaction.reply({ content: `✅ Panneau créé avec succès ! [Aller y](#) (ID: ${rep.id})`, ephemeral: true });
+        const embed = new EmbedBuilder()
+            .setTitle(title)
+            .setDescription(`${desc}\n\n✨ **Réagissez avec l'émoji correspondant ci-dessous pour obtenir ou retirer un rôle !**\n\n*Aucun rôle n'a encore été ajouté. Utilisez « Ajouter Option Rôle » dans le dashboard.*`)
+            .setColor('#5865F2')
+            .setFooter({ text: 'AscoBot • Auto-Rôle Interactif', iconURL: interaction.client.user.displayAvatarURL() })
+            .setTimestamp();
+
+        const panelMsg = await interaction.channel.send({ embeds: [embed] });
+        return interaction.reply({
+            content: `✅ **Panneau Auto-Rôle créé avec succès dans ce salon !**\n\n🆔 **ID du message :** \`${panelMsg.id}\`\n[Aller au message](${panelMsg.url})\n\n👉 *Pour ajouter des rôles avec leurs émojis et descriptions, cliquez sur **« Ajouter Option Rôle »** dans le dashboard et renseignez cet ID.*`,
+            ephemeral: true
+        });
     }
 
-    if (id === 'modal_eng_autoroleadd') {
-        const msgId = interaction.fields.getTextInputValue('msg');
-        const label = interaction.fields.getTextInputValue('label');
-        const emojiStr = interaction.fields.getTextInputValue('emoji');
-        
-        try {
-            const message = await interaction.channel.messages.fetch(msgId);
-            if (!message) return interaction.reply({ content: "Message introuvable.", ephemeral: true });
-            
-            const roleSelect = new RoleSelectMenuBuilder()
-                .setCustomId(`role_${msgId}_${encodeURIComponent(label)}_${encodeURIComponent(emojiStr || '')}`)
-                .setPlaceholder('Sélectionnez le rôle discord à associer à cette option.');
-            return interaction.reply({ content: `✅ Vous modifiez l'option "${label}". Quel rôle voulez-vous lui attribuer ?`, components: [new ActionRowBuilder().addComponents(roleSelect)], ephemeral: true });
-        } catch(e) {
-            return interaction.reply({ content: "Erreur ID message introuvable ici.", ephemeral: true });
+    if (id.startsWith('modal_eng_autoroleadd_')) {
+        // Le panneau est encodé dans le customId : modal_eng_autoroleadd_CHANNELID_MESSAGEID
+        const idParts = id.replace('modal_eng_autoroleadd_', '').split('_');
+        const channelId = idParts[0];
+        const msgId = idParts[1];
+        const emojiStr = interaction.fields.getTextInputValue('emoji').trim();
+        const descStr = interaction.fields.getTextInputValue('desc')?.trim() || '';
+
+        // Recherche du message
+        let targetChannel = await interaction.guild.channels.fetch(channelId).catch(() => null);
+        if (!targetChannel) {
+            return interaction.reply({ content: `❌ Salon introuvable. Le panneau a peut-être été supprimé.`, ephemeral: true });
         }
+        let targetMsg = await targetChannel.messages.fetch(msgId).catch(() => null);
+        if (!targetMsg) {
+            return interaction.reply({ content: `❌ Message \`${msgId}\` introuvable. Le panneau a peut-être été supprimé.`, ephemeral: true });
+        }
+
+        const roleSelect = new RoleSelectMenuBuilder()
+            .setCustomId(`sel_arr_role_${channelId}_${msgId}_${encodeURIComponent(emojiStr)}_${encodeURIComponent(descStr)}`)
+            .setPlaceholder('Sélectionnez le rôle à associer…');
+
+        return interaction.reply({
+            content: `🎯 Configuration pour le panneau dans <#${channelId}> :\n• Émoji : **${emojiStr}**\n• Description : *${descStr || 'Aucune'}*\n\n👉 **Sélectionnez ci-dessous le rôle Discord à attribuer :**`,
+            components: [new ActionRowBuilder().addComponents(roleSelect)],
+            ephemeral: true
+        });
     }
 
     if (id.startsWith('modal_logs_set_')) {
@@ -361,6 +492,56 @@ export async function handleDashboardModal(interaction) {
     }
 }
 
+export async function updateReactionRoleMessage(guild, channelId, messageId) {
+    try {
+        const channel = await guild.channels.fetch(channelId).catch(() => null);
+        if (!channel) return false;
+        const message = await channel.messages.fetch(messageId).catch(() => null);
+        if (!message) return false;
+
+        const conn = await pool.getConnection();
+        const [rows] = await conn.query('SELECT * FROM reaction_roles WHERE guild_id = ? AND message_id = ? ORDER BY id ASC', [guild.id, messageId]);
+        conn.release();
+
+        let baseTitle = '🎭 Choisissez vos Rôles';
+        let baseDesc = 'Sélectionnez les rôles qui vous intéressent pour accéder aux salons associés ou personnaliser vos notifications.';
+
+        if (message.embeds.length > 0 && message.embeds[0].title) {
+            baseTitle = message.embeds[0].title;
+        }
+
+        const embed = new EmbedBuilder()
+            .setTitle(baseTitle)
+            .setColor('#5865F2')
+            .setFooter({ text: 'AscoBot • Auto-Rôle Interactif', iconURL: guild.client.user.displayAvatarURL() })
+            .setTimestamp();
+
+        if (rows.length === 0) {
+            embed.setDescription(`${baseDesc}\n\n*⚠️ Aucun rôle n'est encore configuré sur ce panneau. Ajoutez-en depuis le dashboard (/config).*`);
+        } else {
+            embed.setDescription(`${baseDesc}\n\n✨ **Réagissez avec l'émoji correspondant ci-dessous pour obtenir ou retirer un rôle !**\n\n` +
+                rows.map(r => `${r.emoji}  •  <@&${r.role_id}> ${r.description ? `\n> *${r.description}*` : ''}`).join('\n\n')
+            );
+        }
+
+        await message.edit({ embeds: [embed], components: [] });
+
+        // Ajouter les réactions automatiquement
+        for (const r of rows) {
+            try {
+                const customMatch = r.emoji.match(/<a?:.+?:(\d+)>/);
+                const emojiToReact = customMatch ? customMatch[1] : r.emoji;
+                await message.react(emojiToReact).catch(() => {});
+            } catch (e) {}
+        }
+
+        return true;
+    } catch (e) {
+        console.error("Erreur updateReactionRoleMessage :", e);
+        return false;
+    }
+}
+
 export async function handleDashboardSelectMenu(interaction) {
     const id = interaction.customId;
 
@@ -368,8 +549,6 @@ export async function handleDashboardSelectMenu(interaction) {
         const roleId = interaction.values[0];
         try {
             const conn = await pool.getConnection();
-            // Puisque la table 'server_config' a le champ captcha_role_id, on l'update.
-            // S'il n'y a pas de ligne pour cette guild, on l'insert.
             await conn.query('INSERT INTO server_config (guild_id, captcha_role_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE captcha_role_id=?', [interaction.guildId, roleId, roleId]);
             conn.release();
             await interaction.message.delete().catch(()=>{});
@@ -427,41 +606,201 @@ export async function handleDashboardSelectMenu(interaction) {
 
     if (id === 'sel_logs_channel') {
         const type = interaction.values[0];
-        const modal = new ModalBuilder().setCustomId(`modal_logs_set_${type}`).setTitle(`Configurer Logs: ${type}`);
-        modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('chid').setLabel('Collez l\'ID du salon texte').setStyle(TextInputStyle.Short).setRequired(true)));
-        return interaction.showModal(modal);
+        const channelSelect = new ChannelSelectMenuBuilder()
+            .setCustomId(`sel_logs_channel_pick_${type}`)
+            .setPlaceholder(`Sélectionnez le salon pour : ${type}`)
+            .setChannelTypes(ChannelType.GuildText);
+
+        return interaction.update({
+            content: `👉 Sélectionnez ci-dessous le salon textuel à associer à la catégorie **${type}** :`,
+            components: [new ActionRowBuilder().addComponents(channelSelect)]
+        });
     }
 
-    if (id.startsWith('role_')) {
-        // ID Format: role_MESSAGEID_label_emoji
+    if (id.startsWith('sel_logs_channel_pick_')) {
+        const type = id.replace('sel_logs_channel_pick_', '');
+        const chId = interaction.values[0];
+        setLogChannelId(interaction.guildId, type, chId);
+        return interaction.update({
+            content: `✅ Salon <#${chId}> associé avec succès à la catégorie **${type}** ! Actualisez le dashboard.`,
+            components: []
+        });
+    }
+
+    if (id === 'sel_welcome_single_channel') {
+        const chId = interaction.values[0];
+        setLogChannelId(interaction.guildId, 'bienvenue', chId);
+        setLogChannelId(interaction.guildId, 'departs', chId);
+        setLogChannelId(interaction.guildId, 'arrivees-departs', chId);
+
+        return interaction.update({
+            content: `✅ **Configuration enregistrée avec succès !**\nLes annonces d'arrivée et de départ seront publiées dans le salon unique <#${chId}>.\n*(Actualisez le dashboard pour voir les changements).*`,
+            components: []
+        });
+    }
+
+    if (id === 'sel_welcome_split_welcome_channel') {
+        const welcomeChId = interaction.values[0];
+        setLogChannelId(interaction.guildId, 'bienvenue', welcomeChId);
+
+        const leaveSelect = new ChannelSelectMenuBuilder()
+            .setCustomId(`sel_welcome_split_leave_channel_${welcomeChId}`)
+            .setPlaceholder('Sélectionnez le salon des Départs & Expulsions...')
+            .setChannelTypes(ChannelType.GuildText);
+
+        return interaction.update({
+            content: `✅ Salon de bienvenue configuré sur <#${welcomeChId}> !\n\n👉 **Étape 2/2 :** Sélectionnez maintenant le salon pour les **Départs & Expulsions** :`,
+            components: [new ActionRowBuilder().addComponents(leaveSelect)]
+        });
+    }
+
+    if (id.startsWith('sel_welcome_split_leave_channel_')) {
+        const welcomeChId = id.replace('sel_welcome_split_leave_channel_', '');
+        const leaveChId = interaction.values[0];
+        setLogChannelId(interaction.guildId, 'departs', leaveChId);
+
+        return interaction.update({
+            content: `✅ **Configuration terminée avec succès !**\n\n• **👋 Bienvenue & Arrivées :** <#${welcomeChId}>\n• **🔴 Départs & Expulsions :** <#${leaveChId}>\n\n*(Actualisez le dashboard pour voir les changements).*`,
+            components: []
+        });
+    }
+
+    if (id.startsWith('sel_arr_role_')) {
+        // Format: sel_arr_role_CHANNELID_MESSAGEID_EMOJI_DESC
         const parts = id.split('_');
-        const msgId = parts[1];
-        const label = decodeURIComponent(parts[2]);
-        const emojiStr = decodeURIComponent(parts[3] || '');
+        const channelId = parts[3];
+        const msgId = parts[4];
+        const emojiStr = decodeURIComponent(parts[5]);
+        const descStr = decodeURIComponent(parts[6] || '');
         const roleId = interaction.values[0];
 
         try {
-            const message = await interaction.channel.messages.fetch(msgId);
-            const oldActionRow = message.components[0];
-            const selectMenuComponent = oldActionRow.components[0];
-            const options = Array.from(selectMenuComponent.options).filter(opt => opt.value !== 'dummy');
+            const role = interaction.guild.roles.cache.get(roleId);
+            const roleName = role ? role.name : '';
 
-            const newOption = { label: label, value: roleId };
-            if (emojiStr) newOption.emoji = emojiStr;
-            options.push(newOption);
+            const conn = await pool.getConnection();
+            await conn.query(`
+                INSERT INTO reaction_roles (guild_id, channel_id, message_id, role_id, emoji, description, role_name)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE role_id = VALUES(role_id), description = VALUES(description), role_name = VALUES(role_name)
+            `, [interaction.guildId, channelId, msgId, roleId, emojiStr, descStr, roleName]);
+            conn.release();
 
-            const newSelectMenu = new StringSelectMenuBuilder()
-                .setCustomId('autorole_menu')
-                .setPlaceholder('Sélectionnez vos rôles ci-dessous...')
-                .setMinValues(0)
-                .setMaxValues(options.length)
+            await updateReactionRoleMessage(interaction.guild, channelId, msgId);
+
+            return interaction.update({
+                content: `✅ Le rôle <@&${roleId}> a été associé à l'émoji **${emojiStr}** sur le panneau !\nL'embed et la réaction ont été mis à jour sur le message.`,
+                components: []
+            });
+        } catch (e) {
+            console.error("Erreur association role :", e);
+            return interaction.update({ content: `❌ Erreur lors de l'enregistrement du rôle.`, components: [] });
+        }
+    }
+
+    if (id.startsWith('sel_arr_del_option_')) {
+        const optionId = interaction.values[0];
+
+        try {
+            const conn = await pool.getConnection();
+            const [rows] = await conn.query('SELECT * FROM reaction_roles WHERE id = ?', [optionId]);
+            if (rows.length > 0) {
+                const opt = rows[0];
+                await conn.query('DELETE FROM reaction_roles WHERE id = ?', [optionId]);
+                conn.release();
+
+                await updateReactionRoleMessage(interaction.guild, opt.channel_id, opt.message_id);
+
+                return interaction.update({
+                    content: `✅ L'option **${opt.emoji} <@&${opt.role_id}>** a été retirée du panneau !`,
+                    components: []
+                });
+            } else {
+                conn.release();
+                return interaction.update({ content: `❌ Option introuvable ou déjà supprimée.`, components: [] });
+            }
+        } catch (e) {
+            console.error("Erreur suppression option autorole :", e);
+            return interaction.update({ content: `❌ Erreur lors de la suppression de l'option.`, components: [] });
+        }
+    }
+
+    // --- SÉLECTION PANNEAU AUTO-RÔLE (AJOUT) ---
+    if (id === 'sel_eng_autoroleadd_panel') {
+        const [channelId, msgId] = interaction.values[0].split('_');
+
+        const modal = new ModalBuilder()
+            .setCustomId(`modal_eng_autoroleadd_${channelId}_${msgId}`)
+            .setTitle('Ajouter un rôle au panneau');
+        modal.addComponents(
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('emoji').setLabel('Émoji associé').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('Ex: 🎮 ou 🔔')),
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('desc').setLabel('Description du rôle (optionnel)').setStyle(TextInputStyle.Short).setRequired(false).setPlaceholder('Ex: Pour les fans de jeux vidéo'))
+        );
+        return interaction.showModal(modal);
+    }
+
+    // --- SÉLECTION PANNEAU AUTO-RÔLE (SUPPRESSION) ---
+    if (id === 'sel_eng_autoroledel_panel') {
+        const [channelId, msgId] = interaction.values[0].split('_');
+
+        try {
+            const conn = await pool.getConnection();
+            const [rows] = await conn.query('SELECT * FROM reaction_roles WHERE guild_id = ? AND message_id = ?', [interaction.guildId, msgId]);
+            conn.release();
+
+            if (rows.length === 0) {
+                return interaction.update({ content: `❌ Aucun rôle n'est configuré sur ce panneau.`, components: [] });
+            }
+
+            const options = rows.map(r => ({
+                label: `${r.emoji} ${r.role_name || r.role_id}`.substring(0, 100),
+                value: r.id.toString(),
+                description: (r.description || 'Sans description').substring(0, 100)
+            })).slice(0, 25);
+
+            const select = new StringSelectMenuBuilder()
+                .setCustomId(`sel_arr_del_option_${msgId}`)
+                .setPlaceholder('Choisissez le rôle à retirer du panneau…')
                 .addOptions(options);
 
-            await message.edit({ components: [new ActionRowBuilder().addComponents(newSelectMenu)] });
-            await interaction.message.delete().catch(()=>{});
-            return interaction.reply({ content: `✅ Option ajoutée avec succès au panneau originel !`, ephemeral: true });
+            return interaction.update({
+                content: `🗑️ Sélectionnez le rôle à retirer du panneau dans <#${channelId}> :`,
+                components: [new ActionRowBuilder().addComponents(select)]
+            });
         } catch(e) {
-            return interaction.reply({ content: `❌ Erreur : message originel introuvable ou vous répondez trop tard.`, ephemeral: true });
+            console.error("Erreur listing options :", e);
+            return interaction.update({ content: `❌ Erreur lors de la récupération des rôles.`, components: [] });
+        }
+    }
+
+    // --- DÉPLOIEMENT TICKETS DANS UN SALON CHOISI ---
+    if (id === 'sel_eng_ticket_channel') {
+        const channelId = interaction.values[0];
+
+        try {
+            const targetChannel = await interaction.guild.channels.fetch(channelId);
+
+            const embed = new EmbedBuilder()
+                .setTitle('🎫 Centre de Support')
+                .setDescription('Besoin d\'aide ? Cliquez sur un bouton ci-dessous pour ouvrir un ticket.\nUn membre de l\'équipe vous répondra dès que possible.')
+                .setColor('#2980B9')
+                .setFooter({ text: 'AscoBot • Système de Tickets', iconURL: interaction.client.user.displayAvatarURL() });
+
+            const actionRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('ticket_create_support').setLabel('Support').setStyle(ButtonStyle.Primary).setEmoji('🛠️'),
+                new ButtonBuilder().setCustomId('ticket_create_question').setLabel('Question').setStyle(ButtonStyle.Secondary).setEmoji('❓')
+            );
+
+            await targetChannel.send({ embeds: [embed], components: [actionRow] });
+
+            return interaction.update({
+                content: `✅ **Panneau de tickets déployé avec succès dans <#${channelId}> !**\n\n*Les membres peuvent maintenant cliquer sur les boutons pour ouvrir un ticket.*`,
+                components: []
+            });
+        } catch(e) {
+            console.error("Erreur déploiement tickets :", e);
+            return interaction.update({ content: `❌ Erreur lors du déploiement dans le salon sélectionné.`, components: [] });
         }
     }
 }
+

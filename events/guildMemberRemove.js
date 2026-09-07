@@ -5,7 +5,7 @@ export const event = {
     name: 'guildMemberRemove',
     once: false,
     async execute(member) {
-        const logChannelId = getLogChannelId(member.guild.id, 'arrivees-departs');
+        const logChannelId = getLogChannelId(member.guild.id, 'departs') || getLogChannelId(member.guild.id, 'arrivees-departs');
         if (!logChannelId) return;
 
         let executor = null;

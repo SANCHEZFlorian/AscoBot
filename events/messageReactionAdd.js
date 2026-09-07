@@ -1,5 +1,6 @@
 import { EmbedBuilder } from 'discord.js';
 import { getLogChannelId } from '../utils/logManager.js';
+import pool from '../utils/db.js';
 
 export const event = {
     name: 'messageReactionAdd',
@@ -34,6 +35,39 @@ export const event = {
         // Si le bot n'est pas dans un serveur ou si c'est lui-même l'auteur de la réaction
         if (!reaction.message.guildId) return;
         if (user.bot) return;
+
+        // --- GESTION DES AUTO-RÔLES PAR RÉACTION ---
+        try {
+            const guildId = reaction.message.guildId;
+            const messageId = reaction.message.id;
+            const conn = await pool.getConnection();
+            const [rows] = await conn.query('SELECT * FROM reaction_roles WHERE guild_id = ? AND message_id = ?', [guildId, messageId]);
+            conn.release();
+
+            if (rows.length > 0) {
+                const reactionEmojiStr = reaction.emoji.toString();
+                const reactionEmojiId = reaction.emoji.id;
+                const reactionEmojiName = reaction.emoji.name;
+
+                const match = rows.find(r => {
+                    if (r.emoji === reactionEmojiStr) return true;
+                    if (r.emoji === reactionEmojiName) return true;
+                    if (reactionEmojiId && r.emoji.includes(reactionEmojiId)) return true;
+                    return false;
+                });
+
+                if (match) {
+                    const guild = reaction.message.guild || await reaction.message.client.guilds.fetch(guildId);
+                    const member = await guild.members.fetch(user.id).catch(() => null);
+                    if (member && !member.roles.cache.has(match.role_id)) {
+                        await member.roles.add(match.role_id, 'Auto-Rôle par réaction').catch(e => console.error("Erreur attribution auto-rôle :", e));
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Erreur traitement Auto-Rôle reactionAdd :", e);
+        }
+        // --- FIN AUTO-RÔLES ---
 
         const logChannelId = getLogChannelId(reaction.message.guildId, 'reactions');
         if (!logChannelId) return;

@@ -101,7 +101,22 @@ export async function initDatabaseModuleA() {
             )
         `);
 
-        console.log('[INFO] Tables du Module B initialisées/vérifiées.');
+        // Module Engagement : Auto-Rôles par Réactions
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS reaction_roles (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                guild_id VARCHAR(20) NOT NULL,
+                channel_id VARCHAR(20) NOT NULL,
+                message_id VARCHAR(20) NOT NULL,
+                role_id VARCHAR(20) NOT NULL,
+                emoji VARCHAR(100) NOT NULL,
+                description VARCHAR(255) DEFAULT '',
+                role_name VARCHAR(100) DEFAULT '',
+                UNIQUE KEY unique_panel_emoji (message_id, emoji)
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+        `);
+
+        console.log('[INFO] Tables du Module B & Engagement initialisées/vérifiées.');
     } catch (error) {
         console.error('[ERREUR] Lors de l\'initialisation des tables :', error);
     }
