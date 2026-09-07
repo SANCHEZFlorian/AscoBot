@@ -5,6 +5,8 @@ import { getLogChannelId, setLogChannelId } from './logManager.js';
 
 // Cache temporaire pour stocker les mots-clés pendant la sélection des réactions
 const reactCache = new Map();
+// Cache temporaire pour stocker les descriptions d'autoroles
+const autoroleDescCache = new Map();
 
 export async function handleDashboardButton(interaction) {
     const id = interaction.customId;
@@ -368,14 +370,15 @@ export async function handleDashboardButton(interaction) {
         const channelId = parts[0];
         const msgId = parts[1];
 
-        const modal = new ModalBuilder()
-            .setCustomId(`modal_eng_autoroleadd_${channelId}_${msgId}`)
-            .setTitle('Ajouter un rôle au panneau');
-        modal.addComponents(
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('emoji').setLabel('Émoji associé').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('Ex: 🎮 ou 🔔')),
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('desc').setLabel('Description du rôle (optionnel)').setStyle(TextInputStyle.Short).setRequired(false).setPlaceholder('Ex: Pour les fans de jeux vidéo'))
-        );
-        return interaction.showModal(modal);
+        const roleSelect = new RoleSelectMenuBuilder()
+            .setCustomId(`sel_arr_role_pick_${channelId}_${msgId}`)
+            .setPlaceholder('Sélectionnez le rôle à associer au panneau…');
+
+        return interaction.reply({
+            content: '👉 **Étape 1/2 :** Choisissez le rôle Discord à ajouter au panneau :',
+            components: [new ActionRowBuilder().addComponents(roleSelect)],
+            ephemeral: true
+        });
     }
 
     if (id === 'btn_eng_autoroleadd_manual') {
@@ -383,9 +386,27 @@ export async function handleDashboardButton(interaction) {
             .setCustomId('modal_eng_autoroleadd_manual')
             .setTitle('Associer un message existant');
         modal.addComponents(
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('msg_id').setLabel('ID du Message du panneau').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('Ex: 123456789012345678')),
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('emoji').setLabel('Émoji associé').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('Ex: 🎮 ou 🔔')),
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('desc').setLabel('Description du rôle (optionnel)').setStyle(TextInputStyle.Short).setRequired(false).setPlaceholder('Ex: Pour les fans de jeux vidéo'))
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('msg_id').setLabel('ID du Message du panneau').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('Ex: 123456789012345678'))
+        );
+        return interaction.showModal(modal);
+    }
+
+    if (id.startsWith('btn_arr_cancel_')) {
+        await interaction.message.delete().catch(()=>{});
+        return interaction.reply({ content: '❌ Configuration de l\'émoji annulée.', ephemeral: true });
+    }
+
+    if (id.startsWith('btn_arr_add_desc_')) {
+        const parts = id.replace('btn_arr_add_desc_', '').split('_');
+        const channelId = parts[0];
+        const msgId = parts[1];
+        const roleId = parts[2];
+
+        const modal = new ModalBuilder()
+            .setCustomId(`modal_arr_desc_${msgId}_${roleId}`)
+            .setTitle('Description du rôle');
+        modal.addComponents(
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('desc').setLabel('Description sous le rôle (optionnel)').setStyle(TextInputStyle.Short).setRequired(false).setPlaceholder('Ex: Pour être notifié des streams'))
         );
         return interaction.showModal(modal);
     }
@@ -522,8 +543,6 @@ export async function handleDashboardModal(interaction) {
 
     if (id === 'modal_eng_autoroleadd_manual') {
         const msgId = interaction.fields.getTextInputValue('msg_id').trim();
-        const emojiStr = interaction.fields.getTextInputValue('emoji').trim();
-        const descStr = interaction.fields.getTextInputValue('desc')?.trim() || '';
         
         // Chercher le message dans les salons du serveur
         let targetChannel = null;
@@ -561,41 +580,25 @@ export async function handleDashboardModal(interaction) {
         } catch(e) {}
 
         const roleSelect = new RoleSelectMenuBuilder()
-            .setCustomId(`sel_arr_role_${targetChannel.id}_${msgId}_${encodeURIComponent(emojiStr)}_${encodeURIComponent(descStr)}`)
+            .setCustomId(`sel_arr_role_pick_${targetChannel.id}_${msgId}`)
             .setPlaceholder('Sélectionnez le rôle à associer…');
 
         return interaction.reply({
-            content: `🎯 **Panneau associé dans <#${targetChannel.id}> !**\n• Émoji : **${emojiStr}**\n• Description : *${descStr || 'Aucune'}*\n\n👉 **Sélectionnez ci-dessous le rôle Discord à attribuer :**`,
+            content: `🎯 **Panneau associé dans <#${targetChannel.id}> !**\n\n👉 **Étape 1/2 :** Sélectionnez ci-dessous le rôle Discord à attribuer :`,
             components: [new ActionRowBuilder().addComponents(roleSelect)],
             ephemeral: true
         });
     }
 
-    if (id.startsWith('modal_eng_autoroleadd_')) {
-        // Le panneau est encodé dans le customId : modal_eng_autoroleadd_CHANNELID_MESSAGEID
-        const idParts = id.replace('modal_eng_autoroleadd_', '').split('_');
-        const channelId = idParts[0];
-        const msgId = idParts[1];
-        const emojiStr = interaction.fields.getTextInputValue('emoji').trim();
-        const descStr = interaction.fields.getTextInputValue('desc')?.trim() || '';
+    if (id.startsWith('modal_arr_desc_')) {
+        const parts = id.replace('modal_arr_desc_', '').split('_');
+        const msgId = parts[0];
+        const roleId = parts[1];
+        const desc = interaction.fields.getTextInputValue('desc')?.trim() || '';
 
-        // Recherche du message
-        let targetChannel = await interaction.guild.channels.fetch(channelId).catch(() => null);
-        if (!targetChannel) {
-            return interaction.reply({ content: `❌ Salon introuvable. Le panneau a peut-être été supprimé.`, ephemeral: true });
-        }
-        let targetMsg = await targetChannel.messages.fetch(msgId).catch(() => null);
-        if (!targetMsg) {
-            return interaction.reply({ content: `❌ Message \`${msgId}\` introuvable. Le panneau a peut-être été supprimé.`, ephemeral: true });
-        }
-
-        const roleSelect = new RoleSelectMenuBuilder()
-            .setCustomId(`sel_arr_role_${channelId}_${msgId}_${encodeURIComponent(emojiStr)}_${encodeURIComponent(descStr)}`)
-            .setPlaceholder('Sélectionnez le rôle à associer…');
-
+        autoroleDescCache.set(`${msgId}_${roleId}`, desc);
         return interaction.reply({
-            content: `🎯 Configuration pour le panneau dans <#${channelId}> :\n• Émoji : **${emojiStr}**\n• Description : *${descStr || 'Aucune'}*\n\n👉 **Sélectionnez ci-dessous le rôle Discord à attribuer :**`,
-            components: [new ActionRowBuilder().addComponents(roleSelect)],
+            content: `📝 Description enregistrée : *« ${desc || 'Aucune'} »* !\n👉 Vous pouvez maintenant réagir au message avec l'émoji souhaité.`,
             ephemeral: true
         });
     }
@@ -847,14 +850,99 @@ export async function handleDashboardSelectMenu(interaction) {
     if (id === 'sel_eng_autoroleadd_panel') {
         const [channelId, msgId] = interaction.values[0].split('_');
 
-        const modal = new ModalBuilder()
-            .setCustomId(`modal_eng_autoroleadd_${channelId}_${msgId}`)
-            .setTitle('Ajouter un rôle au panneau');
-        modal.addComponents(
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('emoji').setLabel('Émoji associé').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('Ex: 🎮 ou 🔔')),
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('desc').setLabel('Description du rôle (optionnel)').setStyle(TextInputStyle.Short).setRequired(false).setPlaceholder('Ex: Pour les fans de jeux vidéo'))
-        );
-        return interaction.showModal(modal);
+        const roleSelect = new RoleSelectMenuBuilder()
+            .setCustomId(`sel_arr_role_pick_${channelId}_${msgId}`)
+            .setPlaceholder('Sélectionnez le rôle à associer au panneau…');
+
+        return interaction.update({
+            content: '👉 **Étape 1/2 :** Choisissez le rôle Discord à ajouter au panneau :',
+            components: [new ActionRowBuilder().addComponents(roleSelect)]
+        });
+    }
+
+    // --- SÉLECTION DU RÔLE -> ATTRIBUTION DE L'ÉMOJI PAR RÉACTION ---
+    if (id.startsWith('sel_arr_role_pick_')) {
+        const parts = id.replace('sel_arr_role_pick_', '').split('_');
+        const channelId = parts[0];
+        const msgId = parts[1];
+        const roleId = interaction.values[0];
+
+        await interaction.update({
+            content: `✅ Rôle <@&${roleId}> sélectionné !\n👉 Regardez ci-dessous dans ce salon pour lui attribuer son émoji.`,
+            components: []
+        });
+
+        const embed = new EmbedBuilder()
+            .setTitle('✨ Attribution d\'Émoji pour l\'Auto-Rôle')
+            .setColor('#5865F2')
+            .setDescription(`**Rôle :** <@&${roleId}>\n\n👉 **Réagissez à ce message avec l'émoji souhaité !**\nUtilisez le bouton de réaction Discord (➕😀) pour choisir n'importe quel émoji (standard ou personnalisé du serveur).\n\n*(Vous pouvez aussi ajouter une description via le bouton ci-dessous).*`)
+            .setFooter({ text: 'Vous avez 60 secondes pour réagir avec un émoji' });
+
+        const descBtn = new ButtonBuilder()
+            .setCustomId(`btn_arr_add_desc_${channelId}_${msgId}_${roleId}`)
+            .setLabel('Ajouter une description 📝')
+            .setStyle(ButtonStyle.Secondary);
+
+        const cancelBtn = new ButtonBuilder()
+            .setCustomId(`btn_arr_cancel_${channelId}_${msgId}_${roleId}`)
+            .setLabel('Annuler ❌')
+            .setStyle(ButtonStyle.Danger);
+
+        const promptMsg = await interaction.channel.send({
+            content: `<@${interaction.user.id}>`,
+            embeds: [embed],
+            components: [new ActionRowBuilder().addComponents(descBtn, cancelBtn)]
+        });
+
+        const filter = (reaction, user) => user.id === interaction.user.id && !user.bot;
+        const collector = promptMsg.createReactionCollector({ filter, max: 1, time: 60000 });
+
+        collector.on('collect', async (reaction) => {
+            const emojiStr = reaction.emoji.id 
+                ? (reaction.emoji.animated ? `<a:${reaction.emoji.name}:${reaction.emoji.id}>` : `<:${reaction.emoji.name}:${reaction.emoji.id}>`)
+                : reaction.emoji.name;
+
+            const descStr = autoroleDescCache.get(`${msgId}_${roleId}`) || '';
+            autoroleDescCache.delete(`${msgId}_${roleId}`);
+
+            try {
+                const role = interaction.guild.roles.cache.get(roleId);
+                const roleName = role ? role.name : '';
+
+                const conn = await pool.getConnection();
+                await conn.query(`
+                    INSERT INTO reaction_roles (guild_id, channel_id, message_id, role_id, emoji, description, role_name)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ON DUPLICATE KEY UPDATE role_id = VALUES(role_id), description = VALUES(description), role_name = VALUES(role_name)
+                `, [interaction.guildId, channelId, msgId, roleId, emojiStr, descStr, roleName]);
+                conn.release();
+
+                await updateReactionRoleMessage(interaction.guild, channelId, msgId);
+
+                await promptMsg.edit({
+                    content: `✅ **Succès !** Le rôle <@&${roleId}> a été associé à l'émoji **${emojiStr}** sur le panneau !\nL'émoji et l'embed ont été mis à jour sur le panneau.`,
+                    embeds: [],
+                    components: []
+                });
+
+                setTimeout(() => promptMsg.delete().catch(()=>{}), 6000);
+            } catch(e) {
+                console.error("Erreur enregistrement autorole par réaction :", e);
+                await promptMsg.edit({ content: '❌ Erreur lors de l\'enregistrement du rôle.', embeds: [], components: [] });
+            }
+        });
+
+        collector.on('end', async (collected, reason) => {
+            if (reason === 'time' && collected.size === 0) {
+                await promptMsg.edit({
+                    content: '⏱️ Temps écoulé (60s). Aucune réaction ajoutée, opération annulée.',
+                    embeds: [],
+                    components: []
+                }).catch(()=>{});
+                setTimeout(() => promptMsg.delete().catch(()=>{}), 5000);
+            }
+        });
+        return;
     }
 
     // --- SÉLECTION PANNEAU AUTO-RÔLE (SUPPRESSION) ---
