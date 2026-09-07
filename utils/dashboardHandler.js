@@ -312,33 +312,80 @@ export async function handleDashboardButton(interaction) {
     if (id === 'btn_eng_autoroleadd') {
         try {
             const conn = await pool.getConnection();
-            const [panels] = await conn.query('SELECT DISTINCT channel_id, message_id FROM reaction_roles WHERE guild_id = ?', [interaction.guildId]);
+            const [panels] = await conn.query(`
+                SELECT channel_id, message_id, title FROM reaction_panels WHERE guild_id = ?
+                UNION
+                SELECT DISTINCT channel_id, message_id, 'Panneau Auto-Rôle' as title FROM reaction_roles WHERE guild_id = ?
+            `, [interaction.guildId, interaction.guildId]);
             conn.release();
 
+            const manualBtn = new ButtonBuilder()
+                .setCustomId('btn_eng_autoroleadd_manual')
+                .setLabel('Saisir l\'ID d\'un message existant')
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('🔍');
+
             if (panels.length === 0) {
-                return interaction.reply({ content: '❌ Aucun panneau auto-rôle n\'existe encore.\n👉 Créez-en un d\'abord avec **« Créer Panneau »**.', ephemeral: true });
+                const row = new ActionRowBuilder().addComponents(manualBtn);
+                return interaction.reply({
+                    content: '💡 **Aucun panneau auto-rôle n\'est encore enregistré en base de données.**\n\nSi vous avez déjà créé un panneau (ou si vous souhaitez configurer un message existant), cliquez ci-dessous pour renseigner son ID de message :',
+                    components: [row],
+                    ephemeral: true
+                });
             }
 
-            const options = panels.map((p, i) => ({
-                label: `Panneau #${i + 1}`,
-                value: `${p.channel_id}_${p.message_id}`,
-                description: `Salon: #... • Message: ${p.message_id.slice(-6)}`
-            })).slice(0, 25);
+            const options = panels.map((p, i) => {
+                const channel = interaction.guild.channels.cache.get(p.channel_id);
+                const channelName = channel ? `#${channel.name}` : `#salon`;
+                return {
+                    label: (p.title || `Panneau #${i + 1}`).substring(0, 100),
+                    value: `${p.channel_id}_${p.message_id}`,
+                    description: `${channelName} • ID: ...${p.message_id.slice(-6)}`.substring(0, 100)
+                };
+            }).slice(0, 25);
 
             const select = new StringSelectMenuBuilder()
                 .setCustomId('sel_eng_autoroleadd_panel')
                 .setPlaceholder('Sélectionnez le panneau auquel ajouter un rôle…')
                 .addOptions(options);
 
+            const rowSelect = new ActionRowBuilder().addComponents(select);
+            const rowBtn = new ActionRowBuilder().addComponents(manualBtn);
+
             return interaction.reply({
-                content: '🎯 **Quel panneau souhaitez-vous modifier ?**\nSélectionnez le panneau auto-rôle ci-dessous :',
-                components: [new ActionRowBuilder().addComponents(select)],
+                content: '🎯 **Quel panneau souhaitez-vous modifier ?**\nSélectionnez le panneau ci-dessous, ou saisissez directement l\'ID d\'un message :',
+                components: [rowSelect, rowBtn],
                 ephemeral: true
             });
         } catch(e) {
             console.error("Erreur listing panneaux :", e);
             return interaction.reply({ content: '❌ Erreur lors de la récupération des panneaux.', ephemeral: true });
         }
+    }
+
+    if (id.startsWith('btn_eng_autoroleadd_direct_')) {
+        const parts = id.replace('btn_eng_autoroleadd_direct_', '').split('_');
+        const channelId = parts[0];
+        const msgId = parts[1];
+
+        const modal = new ModalBuilder()
+            .setCustomId(`modal_eng_autoroleadd_${channelId}_${msgId}`)
+            .setTitle('Ajouter un rôle au panneau');
+        modal.addComponents(
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('emoji').setLabel('Émoji associé').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('Ex: 🎮 ou 🔔')),
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('desc').setLabel('Description du rôle (optionnel)').setStyle(TextInputStyle.Short).setRequired(false).setPlaceholder('Ex: Pour les fans de jeux vidéo'))
+        );
+        return interaction.showModal(modal);
+    }
+
+    if (id === 'btn_eng_autoroleadd_manual') {
+        const modal = new ModalBuilder()
+            .setCustomId('modal_eng_autoroleadd_manual')
+            .setTitle('Associer un message existant');
+        modal.addComponents(
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('msg_id').setLabel('ID du Message du panneau').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('Ex: 123456789012345678'))
+        );
+        return interaction.showModal(modal);
     }
 
     if (id === 'btn_eng_autoroledel') {
@@ -447,10 +494,76 @@ export async function handleDashboardModal(interaction) {
             .setTimestamp();
 
         const panelMsg = await interaction.channel.send({ embeds: [embed] });
+
+        try {
+            const conn = await pool.getConnection();
+            await conn.query('INSERT INTO reaction_panels (guild_id, channel_id, message_id, title) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE title = VALUES(title)',
+                [interaction.guildId, interaction.channel.id, panelMsg.id, title]);
+            conn.release();
+        } catch(e) {
+            console.error("Erreur enregistrement panneau :", e);
+        }
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId(`btn_eng_autoroleadd_direct_${interaction.channel.id}_${panelMsg.id}`)
+                .setLabel('Ajouter un premier rôle ➕')
+                .setStyle(ButtonStyle.Success)
+        );
+
         return interaction.reply({
-            content: `✅ **Panneau Auto-Rôle créé avec succès dans ce salon !**\n\n🆔 **ID du message :** \`${panelMsg.id}\`\n[Aller au message](${panelMsg.url})\n\n👉 *Pour ajouter des rôles avec leurs émojis et descriptions, cliquez sur **« Ajouter Option Rôle »** dans le dashboard et renseignez cet ID.*`,
+            content: `✅ **Panneau Auto-Rôle créé avec succès dans ce salon !**\n\n🆔 **ID du message :** \`${panelMsg.id}\`\n[Aller au message](${panelMsg.url})\n\n👉 *Cliquez sur le bouton ci-dessous pour ajouter immédiatement un premier rôle :*`,
+            components: [row],
             ephemeral: true
         });
+    }
+
+    if (id === 'modal_eng_autoroleadd_manual') {
+        const msgId = interaction.fields.getTextInputValue('msg_id').trim();
+        
+        // Chercher le message dans les salons du serveur
+        let targetChannel = null;
+        let targetMsg = null;
+
+        try {
+            targetMsg = await interaction.channel.messages.fetch(msgId);
+            if (targetMsg) targetChannel = interaction.channel;
+        } catch(e) {}
+
+        if (!targetMsg) {
+            const textChannels = interaction.guild.channels.cache.filter(c => c.type === ChannelType.GuildText);
+            for (const [, ch] of textChannels) {
+                try {
+                    targetMsg = await ch.messages.fetch(msgId);
+                    if (targetMsg) {
+                        targetChannel = ch;
+                        break;
+                    }
+                } catch(e) {}
+            }
+        }
+
+        if (!targetMsg) {
+            return interaction.reply({ content: `❌ Message \`${msgId}\` introuvable sur ce serveur. Assurez-vous d'avoir entré le bon ID de message.`, ephemeral: true });
+        }
+
+        // Sauvegarder dans reaction_panels pour les prochaines fois
+        try {
+            const panelTitle = targetMsg.embeds.length > 0 && targetMsg.embeds[0].title ? targetMsg.embeds[0].title : 'Panneau Auto-Rôle';
+            const conn = await pool.getConnection();
+            await conn.query('INSERT INTO reaction_panels (guild_id, channel_id, message_id, title) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE title = VALUES(title)',
+                [interaction.guildId, targetChannel.id, msgId, panelTitle]);
+            conn.release();
+        } catch(e) {}
+
+        const modal = new ModalBuilder()
+            .setCustomId(`modal_eng_autoroleadd_${targetChannel.id}_${msgId}`)
+            .setTitle('Ajouter un rôle au panneau');
+        modal.addComponents(
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('emoji').setLabel('Émoji associé').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('Ex: 🎮 ou 🔔')),
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('desc').setLabel('Description du rôle (optionnel)').setStyle(TextInputStyle.Short).setRequired(false).setPlaceholder('Ex: Pour les fans de jeux vidéo'))
+        );
+        return interaction.showModal(modal);
     }
 
     if (id.startsWith('modal_eng_autoroleadd_')) {

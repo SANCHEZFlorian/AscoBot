@@ -182,7 +182,13 @@ export async function getDashboardEngage(guild) {
     let panelCount = 0;
     try {
         const conn = await pool.getConnection();
-        const [rows] = await conn.query('SELECT COUNT(DISTINCT message_id) as c FROM reaction_roles WHERE guild_id = ?', [guild.id]);
+        const [rows] = await conn.query(`
+            SELECT COUNT(DISTINCT message_id) as c FROM (
+                SELECT message_id FROM reaction_panels WHERE guild_id = ?
+                UNION
+                SELECT message_id FROM reaction_roles WHERE guild_id = ?
+            ) as t
+        `, [guild.id, guild.id]);
         panelCount = rows[0].c;
         conn.release();
     } catch(e) {}

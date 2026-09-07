@@ -103,6 +103,17 @@ export async function initDatabaseModuleA() {
 
         // Module Engagement : Auto-Rôles par Réactions
         await pool.query(`
+            CREATE TABLE IF NOT EXISTS reaction_panels (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                guild_id VARCHAR(20) NOT NULL,
+                channel_id VARCHAR(20) NOT NULL,
+                message_id VARCHAR(20) NOT NULL UNIQUE,
+                title VARCHAR(100) DEFAULT '🎭 Choisissez vos Rôles',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+        `);
+
+        await pool.query(`
             CREATE TABLE IF NOT EXISTS reaction_roles (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 guild_id VARCHAR(20) NOT NULL,
