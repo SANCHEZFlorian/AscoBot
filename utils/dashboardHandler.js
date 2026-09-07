@@ -615,10 +615,23 @@ export async function handleDashboardModal(interaction) {
 
 export async function updateReactionRoleMessage(guild, channelId, messageId) {
     try {
-        const channel = await guild.channels.fetch(channelId).catch(() => null);
-        if (!channel) return false;
-        const message = await channel.messages.fetch(messageId).catch(() => null);
-        if (!message) return false;
+        const channel = await guild.channels.fetch(channelId).catch((err) => {
+            console.error(`[updateReactionRoleMessage] Impossible de fetch le salon ${channelId}:`, err?.message || err);
+            return null;
+        });
+        if (!channel) {
+            console.error(`[updateReactionRoleMessage] Salon introuvable : ${channelId}`);
+            return false;
+        }
+
+        const message = await channel.messages.fetch(messageId).catch((err) => {
+            console.error(`[updateReactionRoleMessage] Impossible de fetch le message ${messageId} dans salon ${channelId}:`, err?.message || err);
+            return null;
+        });
+        if (!message) {
+            console.error(`[updateReactionRoleMessage] Message introuvable : ${messageId}`);
+            return false;
+        }
 
         const conn = await pool.getConnection();
         const [rows] = await conn.query('SELECT * FROM reaction_roles WHERE guild_id = ? AND message_id = ? ORDER BY id ASC', [guild.id, messageId]);
@@ -786,38 +799,6 @@ export async function handleDashboardSelectMenu(interaction) {
         });
     }
 
-    if (id.startsWith('sel_arr_role_')) {
-        // Format: sel_arr_role_CHANNELID_MESSAGEID_EMOJI_DESC
-        const parts = id.split('_');
-        const channelId = parts[3];
-        const msgId = parts[4];
-        const emojiStr = decodeURIComponent(parts[5]);
-        const descStr = decodeURIComponent(parts[6] || '');
-        const roleId = interaction.values[0];
-
-        try {
-            const role = interaction.guild.roles.cache.get(roleId);
-            const roleName = role ? role.name : '';
-
-            const conn = await pool.getConnection();
-            await conn.query(`
-                INSERT INTO reaction_roles (guild_id, channel_id, message_id, role_id, emoji, description, role_name)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE role_id = VALUES(role_id), description = VALUES(description), role_name = VALUES(role_name)
-            `, [interaction.guildId, channelId, msgId, roleId, emojiStr, descStr, roleName]);
-            conn.release();
-
-            await updateReactionRoleMessage(interaction.guild, channelId, msgId);
-
-            return interaction.update({
-                content: `✅ Le rôle <@&${roleId}> a été associé à l'émoji **${emojiStr}** sur le panneau !\nL'embed et la réaction ont été mis à jour sur le message.`,
-                components: []
-            });
-        } catch (e) {
-            console.error("Erreur association role :", e);
-            return interaction.update({ content: `❌ Erreur lors de l'enregistrement du rôle.`, components: [] });
-        }
-    }
 
     if (id.startsWith('sel_arr_del_option_')) {
         const optionId = interaction.values[0];

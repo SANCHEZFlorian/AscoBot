@@ -127,6 +127,9 @@ export async function initDatabaseModuleA() {
             ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
         `);
 
+        // Nettoyer toute entrée corrompue antérieure
+        await pool.query("DELETE FROM reaction_roles WHERE channel_id = 'pick'").catch(() => {});
+
         console.log('[INFO] Tables du Module B & Engagement initialisées/vérifiées.');
     } catch (error) {
         console.error('[ERREUR] Lors de l\'initialisation des tables :', error);
