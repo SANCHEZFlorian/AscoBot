@@ -304,7 +304,7 @@ export async function handleDashboardButton(interaction) {
         const modal = new ModalBuilder().setCustomId('modal_eng_autorolecreate').setTitle('Créer un Panneau Auto-Rôle');
         modal.addComponents(
             new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('titre').setLabel('Titre du panneau').setStyle(TextInputStyle.Short).setRequired(false).setPlaceholder('Ex: 🎭 Choisissez vos Rôles')),
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('desc').setLabel('Message d\'introduction').setStyle(TextInputStyle.Paragraph).setRequired(false).setPlaceholder('Ex: Réagissez aux émojis ci-dessous pour obtenir les rôles correspondants et personnaliser votre expérience.'))
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('desc').setLabel('Message d\'introduction').setStyle(TextInputStyle.Paragraph).setRequired(false).setPlaceholder('Ex: Réagissez aux émojis ci-dessous pour obtenir vos rôles.'))
         );
         return interaction.showModal(modal);
     }
