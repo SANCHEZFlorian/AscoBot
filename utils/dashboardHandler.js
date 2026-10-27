@@ -1,4 +1,4 @@
-import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle, ChannelType, StringSelectMenuBuilder, RoleSelectMenuBuilder, ChannelSelectMenuBuilder } from 'discord.js';
+import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle, ChannelType, StringSelectMenuBuilder, RoleSelectMenuBuilder, ChannelSelectMenuBuilder, PermissionsBitField } from 'discord.js';
 import { getDashboardHome, getDashboardMod, getDashboardReact, getDashboardLogs, getDashboardEngage } from './dashboardUI.js';
 import pool from './db.js';
 import { getLogChannelId, setLogChannelId } from './logManager.js';
@@ -237,11 +237,27 @@ export async function handleDashboardButton(interaction) {
         try {
             let logCat = interaction.guild.channels.cache.find(c => c.name === 'LOGS-ASCOBOT' && c.type === ChannelType.GuildCategory);
             if (!logCat) {
-                logCat = await interaction.guild.channels.create({ name: 'LOGS-ASCOBOT', type: ChannelType.GuildCategory });
+                logCat = await interaction.guild.channels.create({
+                    name: 'LOGS-ASCOBOT',
+                    type: ChannelType.GuildCategory,
+                    permissionOverwrites: [
+                        {
+                            id: interaction.guild.roles.everyone.id,
+                            deny: [PermissionsBitField.Flags.ViewChannel]
+                        },
+                        {
+                            id: interaction.client.user.id,
+                            allow: [
+                                PermissionsBitField.Flags.ViewChannel,
+                                PermissionsBitField.Flags.SendMessages,
+                                PermissionsBitField.Flags.EmbedLinks,
+                                PermissionsBitField.Flags.AttachFiles
+                            ]
+                        }
+                    ]
+                });
             }
             const logsToCreate = [
-                { name: 'bienvenue', key: 'bienvenue' },
-                { name: 'departs', key: 'departs' },
                 { name: 'moderation', key: 'moderation' },
                 { name: 'vocal', key: 'vocal' },
                 { name: 'messages', key: 'messages' },
@@ -255,9 +271,17 @@ export async function handleDashboardButton(interaction) {
                     parent: logCat.id
                 });
                 setLogChannelId(interaction.guildId, log.key, newChannel.id);
+                if (log.key === 'serveur') {
+                    setLogChannelId(interaction.guildId, 'role', newChannel.id);
+                    setLogChannelId(interaction.guildId, 'salon', newChannel.id);
+                    setLogChannelId(interaction.guildId, 'membre', newChannel.id);
+                    setLogChannelId(interaction.guildId, 'emojis', newChannel.id);
+                    setLogChannelId(interaction.guildId, 'thread', newChannel.id);
+                }
             }
-            await interaction.editReply('✅ Tous les salons de logs et bienvenue ont été créés et associés !');
+            await interaction.editReply('✅ Tous les salons de logs ont été créés et associés dans la catégorie privée !');
         } catch (error) {
+            console.error('Erreur déploiement logs:', error);
             await interaction.editReply('❌ Erreur lors du déploiement (Permissions ?).');
         }
         return;

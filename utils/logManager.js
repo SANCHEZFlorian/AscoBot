@@ -34,6 +34,10 @@ export function getLogChannelId(guildId, logType) {
     if (config[guildId] && config[guildId][logType]) {
         return config[guildId][logType];
     }
+    const serverSubTypes = ['role', 'salon', 'membre', 'emojis', 'thread', 'reactions'];
+    if (serverSubTypes.includes(logType) && config[guildId] && config[guildId]['serveur']) {
+        return config[guildId]['serveur'];
+    }
     return null;
 }
 

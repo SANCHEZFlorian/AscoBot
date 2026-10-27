@@ -16,3 +16,4 @@ Suivi des fonctionnalités, commandes et maintenance d'AscoBot.
 ## ✅ Terminé
 - [x] Initialisation du bot Discord
 - [x] Commandes principales et écoute des événements
+- [x] Refonte du déploiement automatique des salons de logs (catégorie privée et exclusion des salons d'accueil)
